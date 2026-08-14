@@ -1,0 +1,12 @@
+# API キーなどの秘密情報 — 絶対にコミットしない
+.env
+.env.local
+*.key
+
+# Node
+node_modules/
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db

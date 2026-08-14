@@ -1,0 +1,9 @@
+{
+  "name": "gemini-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Claude Code から Google Gemini を呼び出すための MCP サーバー（依存パッケージなし）",
+  "main": "index.js",
+  "bin": { "gemini-mcp": "index.js" },
+  "engines": { "node": ">=18" }
+}
