@@ -14,3 +14,7 @@ Thumbs.db
 # サービスアカウントの鍵
 *service-account*.json
 *-sa-key*.json
+
+# Python
+__pycache__/
+*.pyc
