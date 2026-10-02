@@ -10,3 +10,7 @@ npm-debug.log*
 # OS
 .DS_Store
 Thumbs.db
+
+# サービスアカウントの鍵
+*service-account*.json
+*-sa-key*.json
