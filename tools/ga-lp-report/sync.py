@@ -2,7 +2,7 @@
 """GA4 の商品ページ表示回数を「LPリンクの遷移数」シートへ転記する。
 
 サブコマンド:
-  discover  クエリ文字列付きのページパスを集計表示する（カテゴリ判定パラメータの特定用）
+  discover  クエリ文字列付きのページ URL を集計表示する（カテゴリ判定パラメータの特定用）
   verify    指定期間の API 値とシートに手入力済みの値を突き合わせる（書き込みなし）
   run       指定日（既定: 前日）の値をシートに書き込む
 
@@ -21,7 +21,7 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from urllib.parse import parse_qs, quote, urlsplit
+from urllib.parse import parse_qs, quote, unquote, urlsplit
 from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import AuthorizedSession
@@ -90,10 +90,13 @@ def check(resp):
 # ---------- GA4 ----------
 
 def fetch_pageviews(sess, cfg, start, end):
-    """{(YYYY-MM-DD, pagePathPlusQueryString): views} を返す。"""
+    """{(YYYY-MM-DD, pageLocation): views} を返す。
+
+    pagePathPlusQueryString には utm_* が残らないため、完全な URL の pageLocation を使う。
+    """
     body = {
         "dateRanges": [{"startDate": start.isoformat(), "endDate": end.isoformat()}],
-        "dimensions": [{"name": "date"}, {"name": "pagePathPlusQueryString"}],
+        "dimensions": [{"name": "date"}, {"name": "pageLocation"}],
         "metrics": [{"name": cfg["metric"]}],
         "limit": 100000,
     }
@@ -108,7 +111,7 @@ def fetch_pageviews(sess, cfg, start, end):
 
 
 def path_slugs(path):
-    segs = [s for s in urlsplit(path).path.split("/") if s]
+    segs = [unquote(s) for s in urlsplit(path).path.split("/") if s]
     return {re.sub(r"\.[a-z]+$", "", s) for s in segs}
 
 
@@ -264,7 +267,7 @@ def cmd_discover(args, cfg):
     print("== クエリパラメータ名（表示回数の合計）==")
     for k, v in sorted(keys.items(), key=lambda x: -x[1]):
         print(f"{v:8d}  {k}")
-    print(f"\n== クエリ付きパス 上位 {args.top} ==")
+    print(f"\n== クエリ付き URL 上位 {args.top} ==")
     for p, v in sorted(by_path.items(), key=lambda x: -x[1])[: args.top]:
         print(f"{v:8d}  {p}")
 

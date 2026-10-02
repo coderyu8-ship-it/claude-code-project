@@ -4,12 +4,12 @@
   "sheet_name": "LPリンクの遷移数",
   "timezone": "Asia/Tokyo",
   "metric": "screenPageViews",
-  "category_param": "",
+  "category_param": "utm_campaign",
   "categories": {
-    "人気ギフトランキング": "",
-    "お中元・お歳暮人気ランキング": "",
-    "法人人気ランキング": "",
-    "予算から選ぶ（3,000円以内）": "",
-    "予算から選ぶ（5,000円以内）": ""
+    "人気ギフトランキング": "Popular Gifts",
+    "お中元・お歳暮人気ランキング": "Popular Seasonal Gifts",
+    "法人人気ランキング": "Business Favorite",
+    "予算から選ぶ（3,000円以内）": "Gifts Under 3000",
+    "予算から選ぶ（5,000円以内）": "Gifts Under 5000"
   }
 }
