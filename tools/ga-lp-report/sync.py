@@ -6,8 +6,9 @@
   verify    指定期間の API 値とシートに手入力済みの値を突き合わせる（書き込みなし）
   run       指定日（既定: 前日）の値をシートに書き込む
 
-認証: 環境変数 GA_SERVICE_ACCOUNT_JSON に、サービスアカウントの JSON キー本文
-      または {"type": "authorized_user", "client_id", "client_secret", "refresh_token"} を入れる。
+認証（どちらか）:
+  - GA_OAUTH_CLIENT_ID / GA_OAUTH_CLIENT_SECRET / GA_OAUTH_REFRESH_TOKEN（本人の OAuth 認可）
+  - GA_SERVICE_ACCOUNT_JSON（サービスアカウントの JSON キー本文）
 """
 
 import argparse
@@ -45,15 +46,20 @@ def load_config():
 
 
 def session():
+    oauth = [os.environ.get(k, "").strip() for k in
+             ("GA_OAUTH_CLIENT_ID", "GA_OAUTH_CLIENT_SECRET", "GA_OAUTH_REFRESH_TOKEN")]
     raw = os.environ.get("GA_SERVICE_ACCOUNT_JSON")
-    if not raw:
-        sys.exit("GA_SERVICE_ACCOUNT_JSON が設定されていません")
-    info = json.loads(raw)
-    if info.get("type") == "authorized_user":
+    if all(oauth):
         # サービスアカウント鍵を作れない環境向け: 本人の OAuth リフレッシュトークンで認証する
-        creds = user_credentials.Credentials.from_authorized_user_info(info, scopes=SCOPES)
+        client_id, client_secret, refresh_token = oauth
+        creds = user_credentials.Credentials.from_authorized_user_info(
+            {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token},
+            scopes=SCOPES)
+    elif raw:
+        creds = service_account.Credentials.from_service_account_info(json.loads(raw), scopes=SCOPES)
     else:
-        creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
+        missing = [k for k, v in zip(("GA_OAUTH_CLIENT_ID", "GA_OAUTH_CLIENT_SECRET", "GA_OAUTH_REFRESH_TOKEN"), oauth) if not v]
+        sys.exit("認証情報がありません。未設定: " + ", ".join(missing))
     return AuthorizedSession(creds)
 
 

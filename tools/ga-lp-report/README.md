@@ -13,8 +13,9 @@ GA4（プロパティ 499270573）の商品ページ表示回数を、LP カテ�
 
 ## 準備
 
-1. サービスアカウントを GA4 プロパティの「閲覧者」、スプレッドシートの「編集者」に追加
-2. 環境変数 `GA_SERVICE_ACCOUNT_JSON` に JSON キー本文を設定（コミット禁止）
+1. 認可するアカウントが GA4 プロパティの閲覧権限とスプレッドシートの編集権限を持っていること
+2. 環境変数 `GA_OAUTH_CLIENT_ID` `GA_OAUTH_CLIENT_SECRET` `GA_OAUTH_REFRESH_TOKEN` を設定
+   （サービスアカウントを使う場合は `GA_SERVICE_ACCOUNT_JSON` に JSON キー本文）。コミット禁止
 3. `pip install -r tools/ga-lp-report/requirements.txt`
 
 ## 使い方
