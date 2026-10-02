@@ -6,7 +6,8 @@
   verify    指定期間の API 値とシートに手入力済みの値を突き合わせる（書き込みなし）
   run       指定日（既定: 前日）の値をシートに書き込む
 
-認証: 環境変数 GA_SERVICE_ACCOUNT_JSON にサービスアカウントの JSON キー本文を入れる。
+認証: 環境変数 GA_SERVICE_ACCOUNT_JSON に、サービスアカウントの JSON キー本文
+      または {"type": "authorized_user", "client_id", "client_secret", "refresh_token"} を入れる。
 """
 
 import argparse
@@ -22,6 +23,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 from zoneinfo import ZoneInfo
 
 from google.auth.transport.requests import AuthorizedSession
+from google.oauth2 import credentials as user_credentials
 from google.oauth2 import service_account
 
 CONFIG_PATH = Path(__file__).with_name("config.json")
@@ -46,7 +48,12 @@ def session():
     raw = os.environ.get("GA_SERVICE_ACCOUNT_JSON")
     if not raw:
         sys.exit("GA_SERVICE_ACCOUNT_JSON が設定されていません")
-    creds = service_account.Credentials.from_service_account_info(json.loads(raw), scopes=SCOPES)
+    info = json.loads(raw)
+    if info.get("type") == "authorized_user":
+        # サービスアカウント鍵を作れない環境向け: 本人の OAuth リフレッシュトークンで認証する
+        creds = user_credentials.Credentials.from_authorized_user_info(info, scopes=SCOPES)
+    else:
+        creds = service_account.Credentials.from_service_account_info(info, scopes=SCOPES)
     return AuthorizedSession(creds)
 
 
