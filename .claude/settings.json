@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install -q -r tools/ga-lp-report/requirements.txt)",
+      "Bash(python3 tools/ga-lp-report/sync.py run)",
+      "Bash(git pull --ff-only origin main)"
+    ]
+  }
+}
