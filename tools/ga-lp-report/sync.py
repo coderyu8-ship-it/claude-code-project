@@ -6,9 +6,10 @@
   verify    指定期間の API 値とシートに手入力済みの値を突き合わせる（書き込みなし）
   run       指定日（既定: 前日）の値をシートに書き込む
 
-認証（どちらか）:
-  - GA_OAUTH_CLIENT_ID / GA_OAUTH_CLIENT_SECRET / GA_OAUTH_REFRESH_TOKEN（本人の OAuth 認可）
+認証（いずれか）:
+  - GA_SA_CLIENT_EMAIL / GA_SA_PRIVATE_KEY（サービスアカウント鍵 JSON の client_email と private_key）
   - GA_SERVICE_ACCOUNT_JSON（サービスアカウントの JSON キー本文）
+  - GA_OAUTH_CLIENT_ID / GA_OAUTH_CLIENT_SECRET / GA_OAUTH_REFRESH_TOKEN（本人の OAuth 認可）
 """
 
 import argparse
@@ -46,20 +47,29 @@ def load_config():
 
 
 def session():
-    oauth = [os.environ.get(k, "").strip() for k in
-             ("GA_OAUTH_CLIENT_ID", "GA_OAUTH_CLIENT_SECRET", "GA_OAUTH_REFRESH_TOKEN")]
-    raw = os.environ.get("GA_SERVICE_ACCOUNT_JSON")
-    if all(oauth):
+    env = {k: os.environ.get(k, "").strip() for k in (
+        "GA_SA_CLIENT_EMAIL", "GA_SA_PRIVATE_KEY", "GA_SERVICE_ACCOUNT_JSON",
+        "GA_OAUTH_CLIENT_ID", "GA_OAUTH_CLIENT_SECRET", "GA_OAUTH_REFRESH_TOKEN")}
+    if env["GA_SA_CLIENT_EMAIL"] and env["GA_SA_PRIVATE_KEY"]:
+        # JSON から貼り付けた値は改行が "\n" のまま入っているので戻す
+        key = env["GA_SA_PRIVATE_KEY"].strip('"').replace("\\n", "\n")
+        creds = service_account.Credentials.from_service_account_info({
+            "client_email": env["GA_SA_CLIENT_EMAIL"].strip('"'),
+            "private_key": key,
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }, scopes=SCOPES)
+    elif env["GA_SERVICE_ACCOUNT_JSON"]:
+        creds = service_account.Credentials.from_service_account_info(
+            json.loads(env["GA_SERVICE_ACCOUNT_JSON"]), scopes=SCOPES)
+    elif env["GA_OAUTH_CLIENT_ID"] and env["GA_OAUTH_CLIENT_SECRET"] and env["GA_OAUTH_REFRESH_TOKEN"]:
         # サービスアカウント鍵を作れない環境向け: 本人の OAuth リフレッシュトークンで認証する
-        client_id, client_secret, refresh_token = oauth
-        creds = user_credentials.Credentials.from_authorized_user_info(
-            {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token},
-            scopes=SCOPES)
-    elif raw:
-        creds = service_account.Credentials.from_service_account_info(json.loads(raw), scopes=SCOPES)
+        creds = user_credentials.Credentials.from_authorized_user_info({
+            "client_id": env["GA_OAUTH_CLIENT_ID"],
+            "client_secret": env["GA_OAUTH_CLIENT_SECRET"],
+            "refresh_token": env["GA_OAUTH_REFRESH_TOKEN"],
+        }, scopes=SCOPES)
     else:
-        missing = [k for k, v in zip(("GA_OAUTH_CLIENT_ID", "GA_OAUTH_CLIENT_SECRET", "GA_OAUTH_REFRESH_TOKEN"), oauth) if not v]
-        sys.exit("認証情報がありません。未設定: " + ", ".join(missing))
+        sys.exit("認証情報がありません。GA_SA_CLIENT_EMAIL と GA_SA_PRIVATE_KEY を設定してください")
     return AuthorizedSession(creds)
 
 
