@@ -41,7 +41,7 @@
 ## 毎日実行させる指示文（Claude in Chrome / デスクトップアプリのスケジュールに登録）
 
 ```
-Clarity の数値を Google スプレッドシートに記入してください。読み取りと記入以外の操作（設定変更・削除・共有）は一切しないこと。
+Clarity の数値を Google スプレッドシートに記入し、日ごとの分析ドキュメントを作成してください。読み取り・記入・ドキュメント新規作成以外の操作（設定変更・削除・共有）は一切しないこと。
 
 ■ 対象日の決め方
 1. https://docs.google.com/spreadsheets/d/1IWlkOrVyqNjxx_WXbFP_N9HuceOdEkRiDDPRsIgshgo/edit?gid=987719969 の「LPヒートマップ」シートを開く。
