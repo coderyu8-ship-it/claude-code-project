@@ -157,11 +157,12 @@ def diff(old, new):
 def send(subject, body):
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
-    msg["From"] = os.environ.get("MAIL_FROM") or os.environ["SMTP_USER"]
+    msg["From"] = (os.environ.get("MAIL_FROM") or os.environ["SMTP_USER"]).strip()
     msg["To"] = os.environ["MAIL_TO"]
     with smtplib.SMTP(os.environ["SMTP_HOST"], int(os.environ.get("SMTP_PORT", "587"))) as s:
         s.starttls()
-        s.login(os.environ["SMTP_USER"], os.environ["SMTP_PASSWORD"])
+        # Secrets に貼り付けた際の空白・改行（アプリパスワードは空白区切りで表示される）を除く
+        s.login(os.environ["SMTP_USER"].strip(), re.sub(r"\s+", "", os.environ["SMTP_PASSWORD"]))
         s.send_message(msg)
 
 
