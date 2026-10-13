@@ -2,7 +2,7 @@ name: 楽天ショップ更新チェック
 
 on:
   schedule:
-    - cron: "53 23 * * *"  # 毎日 08:53 JST
+    - cron: "30 23 * * *"  # 毎日 08:30 JST 起動 → 09:00 まで待って送信（実行開始の遅延対策）
   workflow_dispatch:
 
 permissions:
@@ -26,6 +26,8 @@ jobs:
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
           MAIL_FROM: ${{ secrets.MAIL_FROM }}
           MAIL_TO: uehara@tstyle.marketing
+          # 手動実行のときは待たずに即送信
+          SEND_AT_JST: ${{ github.event_name == 'schedule' && '09:00' || '' }}
         run: python tools/rakuten-monitor/monitor.py
       - name: スナップショットを保存
         run: |

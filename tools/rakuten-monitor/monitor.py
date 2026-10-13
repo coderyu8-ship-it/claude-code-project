@@ -154,6 +154,17 @@ def diff(old, new):
     return lines
 
 
+def wait_until(hhmm):
+    """GitHub のスケジュール実行は遅延するため早めに起動し、指定時刻（JST）まで待ってから送る。過ぎていれば即送信。"""
+    if not hhmm:
+        return
+    now = datetime.now(JST)
+    h, m = map(int, hhmm.split(":"))
+    target = now.replace(hour=h, minute=m, second=0, microsecond=0)
+    if target > now:
+        time.sleep((target - now).total_seconds())
+
+
 def send(subject, body):
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
@@ -202,6 +213,7 @@ def main():
     if os.environ.get("DRY_RUN"):
         print(subject + "\n\n" + body)
     else:
+        wait_until(os.environ.get("SEND_AT_JST"))
         send(subject, body)
         print(subject)
     return 0
