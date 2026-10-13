@@ -1,0 +1,36 @@
+name: 楽天ショップ更新チェック
+
+on:
+  schedule:
+    - cron: "53 23 * * *"  # 毎日 08:53 JST
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency: rakuten-monitor
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: 取得・差分・メール送信
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: uehara@tstyle.marketing
+        run: python tools/rakuten-monitor/monitor.py
+      - name: スナップショットを保存
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tools/rakuten-monitor/snapshots
+          git diff --cached --quiet || git commit -m "chore: 楽天ショップのスナップショット更新"
+          git push
