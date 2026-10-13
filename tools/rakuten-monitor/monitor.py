@@ -25,7 +25,7 @@ SHOPS = [
 ]
 SNAPSHOT_DIR = Path(__file__).parent / "snapshots"
 JST = timezone(timedelta(hours=9))
-UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+# UA は指定しない（Python 標準）。ブラウザ偽装や独自 UA は Akamai のブロックページ（約40バイト）が返る
 MAX_LIST = 30  # 1 カテゴリあたりメールに載せる件数の上限
 
 
@@ -74,7 +74,8 @@ class ShopParser(HTMLParser):
         elif tag == "title":
             self._in_title = False
         elif tag == "a" and self._link:
-            name = clean(" ".join(self._link_text))
+            # ランキング順位は日々変わるので除く（誤検知防止）
+            name = re.sub(r"^\d+\s*位\s*", "", clean(" ".join(self._link_text)))
             if name and len(name) > len(self.items.get(self._link, "")):
                 self.items[self._link] = name
             elif self._link not in self.items:
@@ -98,7 +99,7 @@ class ShopParser(HTMLParser):
 
 
 def fetch(url):
-    req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept-Language": "ja"})
+    req = urllib.request.Request(url, headers={"Accept-Language": "ja"})
     last = None
     for wait in (0, 5, 15):
         time.sleep(wait)
