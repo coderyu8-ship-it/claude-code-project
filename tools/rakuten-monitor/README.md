@@ -1,6 +1,6 @@
 # 楽天ショップ更新チェック
 
-`.github/workflows/rakuten-monitor.yml` が毎日 08:53 JST に `monitor.py` を実行し、
+`.github/workflows/rakuten-monitor.yml` が毎日 08:30 JST に起動し、09:00 ちょうどに送信する。 `monitor.py` を実行し、
 対象ショップのトップページを前日のスナップショット（`snapshots/`）と比較して、
 店舗ごとの更新内容（掲載商品・バナー・見出し・タイトルの追加/削除/変更）を
 `uehara@tstyle.marketing` にメールする。更新がない日も「更新なし」で送る。
