@@ -45,21 +45,24 @@
     .tmyFb__note { margin-top: 3px; }
   }
 
-  /* PC: 右下のカード（画面幅に合わせて拡大。1366px で約 390px、1920px で上限 480px） */
+  /* PC: 画面下の全幅帯。ボタンと補足文を横並びにし、ボタン幅は画面幅に合わせて拡大（上限 560px） */
   @media (min-width: 768px) {
     .tmyFb {
-      right: clamp(16px, 2vw, 40px);
-      bottom: clamp(16px, 2vw, 40px);
-      width: clamp(320px, 28.5vw, 480px);
-      padding: clamp(14px, 1.4vw, 24px);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(16px, 2vw, 40px);
+      padding: clamp(10px, .9vw, 16px) 24px;
       background-color: #1A2744;
-      border: 2px solid #C9A84C;
-      border-radius: 10px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+      border-top: 3px solid #C9A84C;
+      box-shadow: 0 -4px 16px rgba(0, 0, 0, .2);
     }
-    .tmyFb__link { min-height: clamp(52px, 4.4vw, 76px); font-size: clamp(18px, 1.55vw, 26px); }
+    .tmyFb__link { width: clamp(320px, 32vw, 560px); min-height: clamp(48px, 3.8vw, 64px); font-size: clamp(18px, 1.45vw, 24px); }
     .tmyFb__link:hover { opacity: .85; }
-    .tmyFb__note { margin-top: clamp(8px, .7vw, 12px); font-size: clamp(13px, 1vw, 17px); }
+    .tmyFb__note { font-size: clamp(14px, 1.05vw, 18px); text-align: left; }
   }
 </style>
 
