@@ -1,0 +1,89 @@
+<script>
+(function(){
+  var IMG      = 'http://mizusawatamaruya.gloomy.jp/mizusawaudontamaruya.jp/lp/assets/img/exit-popup01.webp'; // 画像URL
+  var LINE_URL = 'https://lin.ee/w3X6DyO';                                       // 公式LINEのURL
+  var KEY = 'tamaruya_exitpop_at', COOLDOWN = 24*60*60*1000;
+  var GRACE = 3000, IDLE = 10000, BOTTOM_DELAY = 5000;
+  var FB_SUPPRESS = 10000; // フローティングバナーのクリック後、表示しない時間
+
+  var TEST = /[?&]exitpop_test=1/.test(location.search);
+  if(!TEST){
+    try{ var t = +localStorage.getItem(KEY); if(t && Date.now()-t < COOLDOWN) return; }catch(e){}
+  }
+  if(document.getElementById('exitPop')) return;
+
+  var css =
+    '#exitPop{display:none;position:fixed;top:0;right:0;bottom:0;left:0;background:rgba(0,0,0,.65);z-index:2147483647;align-items:center;justify-content:center;touch-action:none}' +
+    '#exitPop .wrap{position:relative;width:88vw;max-width:400px}' +
+    '#exitPop img{display:block;width:100%;max-height:80vh;object-fit:contain;border-radius:8px}' +
+    '#exitPop .x{position:absolute;top:-14px;right:-14px;width:36px;height:36px;border-radius:50%;border:none;background:#fff;color:#333;font-size:22px;line-height:1;padding:0;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:1}' +
+    '#exitPop .x:after{content:"";position:absolute;top:-6px;right:-6px;bottom:-6px;left:-6px;border-radius:50%}' +
+    '#exitPop a,#exitPop a:hover,#exitPop a img,#exitPop a:hover img,#exitPop .x,#exitPop .x:hover{opacity:1 !important;filter:none !important;transition:none !important}';
+  var st = document.createElement('style');
+  st.appendChild(document.createTextNode(css));
+  document.head.appendChild(st);
+
+  var pop = document.createElement('div');
+  pop.id = 'exitPop';
+  pop.setAttribute('role', 'dialog');
+  var wrap = document.createElement('div'); wrap.className = 'wrap';
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'x'; closeBtn.setAttribute('aria-label', 'close');
+  closeBtn.appendChild(document.createTextNode('×'));
+  var cta = document.createElement('a');
+  cta.className = 'cta'; cta.href = LINE_URL; cta.target = '_blank'; cta.rel = 'noopener';
+  var img = document.createElement('img'); img.src = IMG; img.alt = 'LINE';
+  cta.appendChild(img); wrap.appendChild(closeBtn); wrap.appendChild(cta); pop.appendChild(wrap);
+  document.body.appendChild(pop);
+
+  var start = Date.now(), shown = false, scrolled = false, bottomTimer = null, wentHidden = false;
+  var root = document.documentElement, prevOverflow = '';
+
+  function push(ev, reason){
+    if(window.dataLayer) window.dataLayer.push({'event': ev, 'exit_popup_reason': reason || ''});
+    if(typeof window.clarity === 'function'){
+      window.clarity('event', ev);
+      window.clarity('set', 'exit_popup', ev.replace('exit_popup_', ''));
+      if(reason) window.clarity('set', 'exit_popup_reason', reason);
+    }
+  }
+  function show(reason){
+    if(shown || Date.now() - start < GRACE) return;
+    // フローティングバナーのクリック直後（ランキングへのスクロール中など）は表示しない
+    if(window.tmyFbClickedAt && Date.now() - window.tmyFbClickedAt < FB_SUPPRESS) return;
+    shown = true; pop.style.display = 'flex';
+    prevOverflow = root.style.overflow; root.style.overflow = 'hidden';
+    if(!TEST){ try{ localStorage.setItem(KEY, String(Date.now())); }catch(e){} }
+    push('exit_popup_show', reason);
+  }
+  function hide(){
+    pop.style.display = 'none';
+    root.style.overflow = prevOverflow;
+  }
+
+  document.addEventListener('mouseout', function(e){
+    if(!e.relatedTarget && e.clientY <= 0) show('exit_intent');
+  });
+  document.addEventListener('visibilitychange', function(){
+    if(document.visibilityState === 'hidden'){ wentHidden = true; }
+    else if(wentHidden){ show('return_from_background'); }
+  });
+  setTimeout(function(){ if(!scrolled) show('idle_10s'); }, IDLE);
+
+  var lastY = window.pageYOffset;
+  window.addEventListener('scroll', function(){
+    var y = window.pageYOffset;
+    if(Math.abs(y - lastY) > 10) scrolled = true;
+    if(lastY - y > 150 && y > 600) show('scroll_up');
+    if(window.innerHeight + y >= root.scrollHeight - 50 && !bottomTimer){
+      bottomTimer = setTimeout(function(){ show('bottom_5s'); }, BOTTOM_DELAY);
+    }
+    lastY = y;
+  });
+
+  pop.addEventListener('click', function(e){
+    if(e.target === pop || e.target === closeBtn){ hide(); push('exit_popup_close'); }
+  });
+  cta.addEventListener('click', function(){ hide(); push('exit_popup_click'); });
+})();
+</script>

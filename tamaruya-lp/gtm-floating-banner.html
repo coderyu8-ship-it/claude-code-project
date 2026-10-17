@@ -132,6 +132,8 @@
   link.addEventListener('click', function (e) {
     e.preventDefault();
     push('floating_banner_click');
+    // 離脱防止ポップアップ側で、クリック後 10 秒間は表示しない判定に使う
+    window.tmyFbClickedAt = Date.now();
     var header = document.querySelector('.hdr');
     var offset = header ? header.offsetHeight : 0;
     var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
