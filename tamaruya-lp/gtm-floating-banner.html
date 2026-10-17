@@ -30,19 +30,6 @@
   }
   .tmyFb__link::after { content: "\25B6"; font-size: .7em; }
   .tmyFb__note { margin: 0; color: #fff; font-size: 11px; line-height: 1.3; text-align: center; letter-spacing: .02em; }
-  .tmyFb__close {
-    position: absolute;
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    border: 0;
-    border-radius: 50%;
-    background: #fff;
-    color: #1A2744;
-    font-size: 16px;
-    line-height: 28px;
-    cursor: pointer;
-  }
 
   /* SP: 画面下の帯（高さ 56px 前後） */
   @media (max-width: 767px) {
@@ -50,55 +37,46 @@
       left: 0;
       right: 0;
       bottom: 0;
-      padding: 6px 44px calc(6px + env(safe-area-inset-bottom)) 12px;
+      padding: 6px 12px calc(6px + env(safe-area-inset-bottom));
       background-color: #1A2744;
       border-top: 3px solid #C9A84C;
     }
     .tmyFb__link { width: 100%; min-height: 36px; font-size: 15px; }
     .tmyFb__note { margin-top: 3px; }
-    .tmyFb__close { top: 50%; right: 8px; margin-top: -14px; }
   }
 
-  /* PC: 右下のカード */
+  /* PC: 右下のカード（画面幅に合わせて拡大。1366px で約 390px、1920px で上限 480px） */
   @media (min-width: 768px) {
     .tmyFb {
-      right: 24px;
-      bottom: 24px;
-      width: 280px;
-      padding: 16px;
+      right: clamp(16px, 2vw, 40px);
+      bottom: clamp(16px, 2vw, 40px);
+      width: clamp(320px, 28.5vw, 480px);
+      padding: clamp(14px, 1.4vw, 24px);
       background-color: #1A2744;
       border: 2px solid #C9A84C;
-      border-radius: 8px;
+      border-radius: 10px;
       box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
     }
-    .tmyFb__link { min-height: 48px; font-size: 17px; }
+    .tmyFb__link { min-height: clamp(52px, 4.4vw, 76px); font-size: clamp(18px, 1.55vw, 26px); }
     .tmyFb__link:hover { opacity: .85; }
-    .tmyFb__note { margin-top: 8px; font-size: 12px; }
-    .tmyFb__close { top: -12px; right: -12px; border: 2px solid #C9A84C; }
+    .tmyFb__note { margin-top: clamp(8px, .7vw, 12px); font-size: clamp(13px, 1vw, 17px); }
   }
 </style>
 
 <div class="tmyFb" id="tmyFb" role="complementary" aria-label="人気ランキングへの案内">
   <a class="tmyFb__link" id="tmyFbLink" href="#ranking">人気ランキングを見る</a>
   <p class="tmyFb__note">のし・包装無料｜通常3〜5営業日発送</p>
-  <button type="button" class="tmyFb__close" id="tmyFbClose" aria-label="閉じる">&times;</button>
 </div>
 
 <script>
 (function () {
   var SHOW_RATIO = 0.15;
-  var STORAGE_KEY = 'tmyFbClosed';
   var HIDE_TARGETS = ['#ranking', '#ranking02', '#ranking03', '.fCta'];
 
   var banner = document.getElementById('tmyFb');
   var link = document.getElementById('tmyFbLink');
-  var closeBtn = document.getElementById('tmyFbClose');
   var target = document.getElementById('ranking');
   if (!banner || !target) return;
-
-  var closed = false;
-  try { closed = sessionStorage.getItem(STORAGE_KEY) === '1'; } catch (e) {}
-  if (closed) { banner.parentNode.removeChild(banner); return; }
 
   var device = window.matchMedia('(min-width: 768px)').matches ? 'pc' : 'sp';
   var visibleTargets = 0;
@@ -116,7 +94,7 @@
   }
 
   function update() {
-    var show = scrolledEnough && visibleTargets === 0 && !closed;
+    var show = scrolledEnough && visibleTargets === 0;
     banner.classList.toggle('is-show', show);
     if (show && !impressionSent) {
       impressionSent = true;
@@ -155,13 +133,6 @@
     var offset = header ? header.offsetHeight : 0;
     var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
     window.scrollTo({ top: top, behavior: 'smooth' });
-  });
-
-  closeBtn.addEventListener('click', function () {
-    closed = true;
-    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch (e) {}
-    push('floating_banner_close');
-    update();
   });
 
   window.addEventListener('scroll', onScroll, { passive: true });
