@@ -108,6 +108,11 @@
   function push(eventName) {
     window.dataLayer = window.dataLayer || [];
     window.dataLayer.push({ event: eventName, fb_device: device, fb_destination: '#ranking' });
+    // Clarity: レコーディング・ヒートマップを「バナーを表示／クリックしたセッション」で絞り込むため
+    if (typeof window.clarity === 'function') {
+      window.clarity('event', eventName);
+      window.clarity('set', eventName, device);
+    }
   }
 
   function update() {
