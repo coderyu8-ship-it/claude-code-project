@@ -1,0 +1,166 @@
+<!--
+  田丸屋 LP フローティングバナー（GTM カスタム HTML タグ用）
+  対象: https://mizusawaudontamaruya.jp/lp/
+  トリガー: ページビュー（DOM Ready）／ Page Path が /lp/ で始まる
+  ※ LP 改修時は .hdr / #ranking / #ranking02 / #ranking03 / .fCta のセレクタが残っているか要確認
+-->
+<style>
+  .tmyFb {
+    position: fixed;
+    z-index: 100;
+    box-sizing: border-box;
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", serif;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(16px);
+    transition: opacity .25s ease, transform .25s ease, visibility .25s;
+  }
+  .tmyFb.is-show { opacity: 1; visibility: visible; transform: translateY(0); }
+  .tmyFb__link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    box-sizing: border-box;
+    color: #fff;
+    text-decoration: none;
+    background-color: #C4501A;
+    border-radius: 5px;
+    font-weight: 700;
+  }
+  .tmyFb__link::after { content: "\25B6"; font-size: .7em; }
+  .tmyFb__note { margin: 0; color: #fff; font-size: 11px; line-height: 1.3; text-align: center; letter-spacing: .02em; }
+  .tmyFb__close {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #fff;
+    color: #1A2744;
+    font-size: 16px;
+    line-height: 28px;
+    cursor: pointer;
+  }
+
+  /* SP: 画面下の帯（高さ 56px 前後） */
+  @media (max-width: 767px) {
+    .tmyFb {
+      left: 0;
+      right: 0;
+      bottom: 0;
+      padding: 6px 44px calc(6px + env(safe-area-inset-bottom)) 12px;
+      background-color: #1A2744;
+      border-top: 3px solid #C9A84C;
+    }
+    .tmyFb__link { width: 100%; min-height: 36px; font-size: 15px; }
+    .tmyFb__note { margin-top: 3px; }
+    .tmyFb__close { top: 50%; right: 8px; margin-top: -14px; }
+  }
+
+  /* PC: 右下のカード */
+  @media (min-width: 768px) {
+    .tmyFb {
+      right: 24px;
+      bottom: 24px;
+      width: 280px;
+      padding: 16px;
+      background-color: #1A2744;
+      border: 2px solid #C9A84C;
+      border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, .25);
+    }
+    .tmyFb__link { min-height: 48px; font-size: 17px; }
+    .tmyFb__link:hover { opacity: .85; }
+    .tmyFb__note { margin-top: 8px; font-size: 12px; }
+    .tmyFb__close { top: -12px; right: -12px; border: 2px solid #C9A84C; }
+  }
+</style>
+
+<div class="tmyFb" id="tmyFb" role="complementary" aria-label="人気ランキングへの案内">
+  <a class="tmyFb__link" id="tmyFbLink" href="#ranking">人気ランキングを見る</a>
+  <p class="tmyFb__note">のし・包装無料｜通常3〜5営業日発送</p>
+  <button type="button" class="tmyFb__close" id="tmyFbClose" aria-label="閉じる">&times;</button>
+</div>
+
+<script>
+(function () {
+  var SHOW_RATIO = 0.15;
+  var STORAGE_KEY = 'tmyFbClosed';
+  var HIDE_TARGETS = ['#ranking', '#ranking02', '#ranking03', '.fCta'];
+
+  var banner = document.getElementById('tmyFb');
+  var link = document.getElementById('tmyFbLink');
+  var closeBtn = document.getElementById('tmyFbClose');
+  var target = document.getElementById('ranking');
+  if (!banner || !target) return;
+
+  var closed = false;
+  try { closed = sessionStorage.getItem(STORAGE_KEY) === '1'; } catch (e) {}
+  if (closed) { banner.parentNode.removeChild(banner); return; }
+
+  var device = window.matchMedia('(min-width: 768px)').matches ? 'pc' : 'sp';
+  var visibleTargets = 0;
+  var scrolledEnough = false;
+  var impressionSent = false;
+
+  function push(eventName) {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({ event: eventName, fb_device: device, fb_destination: '#ranking' });
+  }
+
+  function update() {
+    var show = scrolledEnough && visibleTargets === 0 && !closed;
+    banner.classList.toggle('is-show', show);
+    if (show && !impressionSent) {
+      impressionSent = true;
+      push('floating_banner_impression');
+    }
+  }
+
+  function onScroll() {
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    scrolledEnough = max > 0 && window.pageYOffset / max >= SHOW_RATIO;
+    update();
+  }
+
+  if ('IntersectionObserver' in window) {
+    var observer = new IntersectionObserver(function (entries) {
+      for (var i = 0; i < entries.length; i++) {
+        var el = entries[i].target;
+        var wasVisible = el.getAttribute('data-tmy-fb-visible') === '1';
+        if (entries[i].isIntersecting !== wasVisible) {
+          el.setAttribute('data-tmy-fb-visible', entries[i].isIntersecting ? '1' : '0');
+          visibleTargets += entries[i].isIntersecting ? 1 : -1;
+        }
+      }
+      update();
+    });
+    for (var i = 0; i < HIDE_TARGETS.length; i++) {
+      var el = document.querySelector(HIDE_TARGETS[i]);
+      if (el) observer.observe(el);
+    }
+  }
+
+  link.addEventListener('click', function (e) {
+    e.preventDefault();
+    push('floating_banner_click');
+    var header = document.querySelector('.hdr');
+    var offset = header ? header.offsetHeight : 0;
+    var top = target.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: top, behavior: 'smooth' });
+  });
+
+  closeBtn.addEventListener('click', function () {
+    closed = true;
+    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch (e) {}
+    push('floating_banner_close');
+    update();
+  });
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
