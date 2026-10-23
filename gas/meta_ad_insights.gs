@@ -5,7 +5,14 @@
  *   このスクリプトは Apps Script プロジェクト1つに置く。
  *   毎週トリガーで createWeeklyReport() が走り、REPORT_FOLDER_ID のフォルダに
  *   「YYYYMMDD時点_Meta広告バナー分析」というスプレッドシートを新規作成する。
- *   期間は 1週間 / 2週間 / 3週間 / 1ヶ月（いずれも前日まで）。
+ *   YYYYMMDD は基準日。期間は基準日の前日までの 7 / 14 / 21 / 30 日間。
+ *   （例: 基準日 2026/10/20 → 1週間 = 10/13〜10/19）
+ *
+ * 実行方法:
+ *   - 毎週の自動実行: 基準日 = 実行日
+ *   - 手動実行（基準日を指定）:
+ *       a. スプレッドシートのメニュー「バナー分析 → 基準日を指定して作成」
+ *       b. エディタで MANUAL_BASE_DATE を書き換えて createManualReport() を実行
  *
  * 前提:
  *   - スクリプトプロパティ META_ACCESS_TOKEN に ads_read 権限のシステムユーザートークン
@@ -13,7 +20,7 @@
  *
  * 初回セットアップ:
  *   1. スクリプトプロパティに META_ACCESS_TOKEN を登録
- *   2. createWeeklyReport() を手動実行して権限を承認・出力を確認
+ *   2. createManualReport() を実行して権限を承認・出力を確認
  *   3. installWeeklyTrigger() を1回だけ実行（毎週月曜 7時台に自動実行）
  */
 
@@ -21,6 +28,8 @@ const AD_ACCOUNT_ID = 'act_825232673399116';
 const API_VERSION = 'v21.0';
 const REPORT_FOLDER_ID = '1boFSaU9VM3VTTvQLNSYN5lfRMtQ5jLXq';
 const FILE_SUFFIX = '時点_Meta広告バナー分析';
+// エディタから createManualReport() を実行するときの基準日（yyyy/MM/dd）。空なら今日
+const MANUAL_BASE_DATE = '';
 // バナー画像の置き場所。広告名の「verN」と同じ名前の画像（verN.jpg）をセルに埋め込む
 const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';
 
@@ -28,7 +37,7 @@ const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';
 const ACTION_V2 = 'offsite_conversion.fb_pixel_add_to_cart';
 const ACTION_V4 = 'offsite_conversion.fb_pixel_add_payment_info';
 
-// 1ファイルに作るシート（期間ごと）。days 日前〜前日を集計する
+// 1ファイルに作るシート（期間ごと）。基準日の days 日前〜前日を集計する
 const PERIODS = [
   { sheet: '1週間', days: 7 },
   { sheet: '2週間', days: 14 },
@@ -61,9 +70,48 @@ const COL_SPEND = HEADER.indexOf('広告費');
 const COL_V2 = HEADER.indexOf('v2(カート)');
 const COL_JUDGE = HEADER.indexOf('判定');
 
+/** 毎週トリガーから呼ばれる。基準日 = 実行日 */
 function createWeeklyReport() {
-  const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyyMMdd');
-  const ss = SpreadsheetApp.create(today + FILE_SUFFIX);
+  return createReport_(new Date());
+}
+
+/** エディタから手動実行。基準日は MANUAL_BASE_DATE（空なら今日） */
+function createManualReport() {
+  return createReport_(MANUAL_BASE_DATE ? parseDate_(MANUAL_BASE_DATE) : new Date());
+}
+
+/** スプレッドシートを開いたときにメニューを追加（このスクリプトがスプレッドシートに紐づく場合のみ有効） */
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu('バナー分析')
+    .addItem('基準日を指定して作成', 'promptAndCreateReport')
+    .addToUi();
+}
+
+function promptAndCreateReport() {
+  const ui = SpreadsheetApp.getUi();
+  const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd');
+  const res = ui.prompt('基準日を指定',
+    `yyyy/MM/dd で入力（空欄なら今日 ${today}）。基準日の前日までの 7/14/21/30 日間を集計します。`,
+    ui.ButtonSet.OK_CANCEL);
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+  const input = res.getResponseText().trim();
+  const url = createReport_(input ? parseDate_(input) : new Date());
+  ui.alert(`作成しました\n${url}`);
+}
+
+/** 'yyyy/MM/dd'・'yyyy-MM-dd'・'yyyyMMdd' を JST の日付として読む */
+function parseDate_(text) {
+  const m = String(text).trim().match(/^(\d{4})[\/-]?(\d{1,2})[\/-]?(\d{1,2})$/);
+  if (!m) throw new Error(`基準日の形式が不正です: ${text}（例: 2026/10/20）`);
+  const date = new Date(`${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}T00:00:00+09:00`);
+  if (isNaN(date) || date > new Date()) throw new Error(`基準日が不正、または未来日です: ${text}`);
+  return date;
+}
+
+function createReport_(baseDate) {
+  const label = Utilities.formatDate(baseDate, 'Asia/Tokyo', 'yyyyMMdd');
+  const ss = SpreadsheetApp.create(label + FILE_SUFFIX);
   DriveApp.getFileById(ss.getId()).moveTo(DriveApp.getFolderById(REPORT_FOLDER_ID));
 
   const creatives = fetchCreatives_();
@@ -72,7 +120,7 @@ function createWeeklyReport() {
   const summary = {};
 
   PERIODS.forEach(p => {
-    const range = timeRange_(p.days);
+    const range = timeRange_(baseDate, p.days);
     const result = buildRows_(range, creatives);
     actionTotals = result.actionTotals; // 最後（最長期間）の値が残る
     result.rows.forEach(r => {
@@ -100,6 +148,7 @@ function createWeeklyReport() {
   if (blank && ss.getSheets().length > 1) ss.deleteSheet(blank);
 
   Logger.log(ss.getUrl());
+  return ss.getUrl();
 }
 
 function installWeeklyTrigger() {
@@ -111,10 +160,10 @@ function installWeeklyTrigger() {
     .create();
 }
 
-/** days 日前〜前日（JST）の time_range */
-function timeRange_(days) {
+/** 基準日の days 日前〜前日（JST）の time_range */
+function timeRange_(baseDate, days) {
   const fmt = d => Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd');
-  const until = new Date(Date.now() - 24 * 3600 * 1000);
+  const until = new Date(baseDate.getTime() - 24 * 3600 * 1000);
   const since = new Date(until.getTime() - (days - 1) * 24 * 3600 * 1000);
   return { since: fmt(since), until: fmt(until) };
 }
