@@ -21,7 +21,7 @@ const AD_ACCOUNT_ID = 'act_825232673399116';
 const API_VERSION = 'v21.0';
 const REPORT_FOLDER_ID = '1boFSaU9VM3VTTvQLNSYN5lfRMtQ5jLXq';
 const FILE_SUFFIX = '時点_Meta広告バナー分析';
-// Meta から画像が取れない広告は、このフォルダの verN.jpg をバナー画像として使う
+// バナー画像の置き場所。広告名の「verN」と同じ名前の画像（verN.jpg）をセルに埋め込む
 const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';
 
 // v2 / v4 に対応する action_type。初回実行後「アクション一覧」シートを見て確定させる。
@@ -131,11 +131,11 @@ function buildRows_(range, creatives) {
     const v2 = actions[ACTION_V2] || 0;
     const v4 = actions[ACTION_V4] || 0;
     const c = creatives[r.ad_id] || {};
-    const img = c.thumbnailUrl || c.imageUrl || '';
     const key = bannerKey_(r.ad_name);
+    const banner = bannerImage_(r.ad_id, c.thumbnailUrl || c.imageUrl || '', key);
 
     return [
-      bannerImage_(r.ad_id, img, key),
+      banner.cell,
       key,
       r.ad_id, r.ad_name, r.campaign_name, r.adset_name, c.status || '',
       Number(r.impressions || 0), Number(r.reach || 0), Number(r.frequency || 0),
@@ -144,7 +144,7 @@ function buildRows_(range, creatives) {
       Number(r.cpc || 0), Number(r.cpm || 0), spend,
       v2, v4, v2 ? spend / v2 : '', v4 ? spend / v4 : '',
       '', '',
-      img,
+      banner.url,
     ];
   });
 
@@ -181,30 +181,51 @@ function judge_(rows) {
 }
 
 const imageCache_ = {};
+let bannerFiles_ = null;
+
+/** ドライブのバナーフォルダを「verN」→ ファイル の対応表にする（1回だけ読む） */
+function loadBannerFiles_() {
+  if (bannerFiles_) return bannerFiles_;
+  bannerFiles_ = {};
+  const it = DriveApp.getFolderById(BANNER_FOLDER_ID).getFiles();
+  while (it.hasNext()) {
+    const f = it.next();
+    if (!/^image\//.test(f.getMimeType())) continue;
+    const key = bannerKey_(f.getName());
+    if (key) bannerFiles_[key] = f;
+  }
+  return bannerFiles_;
+}
 
 /**
- * セルに埋め込む画像（CellImage）。外部URL参照の =IMAGE() は Meta の画像URLが
- * 期限切れ・取得拒否で表示されないため、画像データ自体をセルに埋め込む。
- * Meta のサムネイル → ドライブの verN.jpg の順に試し、どちらも無ければ空欄。
+ * バナー画像セルの中身と、その画像の URL。
+ * ドライブの verN.jpg を優先し、無い広告だけ Meta のサムネイルを使う。
+ * 画像データ自体をセルに埋め込むので、ドライブの共有設定に関係なく表示される。
  */
-function bannerImage_(adId, url, key) {
-  if (adId in imageCache_) return imageCache_[adId];
+function bannerImage_(adId, metaUrl, key) {
+  const cacheKey = key || adId;
+  if (cacheKey in imageCache_) return imageCache_[cacheKey];
+
   let blob = null;
-  if (url) {
-    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  let url = '';
+  const file = key && loadBannerFiles_()[key];
+  if (file) {
+    blob = file.getSize() > 1.5 * 1024 * 1024 ? file.getThumbnail() : file.getBlob();
+    url = file.getUrl();
+  } else if (metaUrl) {
+    const res = UrlFetchApp.fetch(metaUrl, { muteHttpExceptions: true });
     if (res.getResponseCode() === 200) blob = res.getBlob();
+    url = metaUrl;
   }
-  if (!blob && key) {
-    const files = DriveApp.getFolderById(BANNER_FOLDER_ID).searchFiles(`title contains '${key}.'`);
-    if (files.hasNext()) blob = files.next().getThumbnail();
-  }
-  imageCache_[adId] = blob
+
+  const cell = blob
     ? SpreadsheetApp.newCellImage()
       .setSourceUrl(`data:${blob.getContentType()};base64,${Utilities.base64Encode(blob.getBytes())}`)
-      .setAltTextTitle(key || adId)
+      .setAltTextTitle(cacheKey)
       .build()
     : '';
-  return imageCache_[adId];
+  imageCache_[cacheKey] = { cell, url };
+  return imageCache_[cacheKey];
 }
 
 /** 広告ID → { status, imageUrl, thumbnailUrl } */
