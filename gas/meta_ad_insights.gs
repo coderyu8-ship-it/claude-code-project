@@ -10,9 +10,9 @@
  *
  * 実行方法:
  *   - 毎週の自動実行: 基準日 = 実行日
- *   - 手動実行（基準日を指定）:
- *       a. スプレッドシートのメニュー「バナー分析 → 基準日を指定して作成」
- *       b. エディタで MANUAL_BASE_DATE を書き換えて createManualReport() を実行
+ *   - 手動実行: createManualReport() を実行すると基準日の入力ダイアログが出る
+ *     （エディタから実行した場合、ダイアログはスプレッドシート側のタブに表示される。
+ *       スプレッドシートのメニュー「バナー分析 → 基準日を指定して作成」からも実行できる）
  *
  * 前提:
  *   - スクリプトプロパティ META_ACCESS_TOKEN に ads_read 権限のシステムユーザートークン
@@ -28,8 +28,6 @@ const AD_ACCOUNT_ID = 'act_825232673399116';
 const API_VERSION = 'v21.0';
 const REPORT_FOLDER_ID = '1boFSaU9VM3VTTvQLNSYN5lfRMtQ5jLXq';
 const FILE_SUFFIX = '時点_Meta広告バナー分析';
-// エディタから createManualReport() を実行するときの基準日（yyyy/MM/dd）。空なら今日
-const MANUAL_BASE_DATE = '';
 // バナー画像の置き場所。広告名の「verN」と同じ名前の画像（verN.jpg）をセルに埋め込む
 const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';
 
@@ -75,21 +73,23 @@ function createWeeklyReport() {
   return createReport_(new Date());
 }
 
-/** エディタから手動実行。基準日は MANUAL_BASE_DATE（空なら今日） */
-function createManualReport() {
-  return createReport_(MANUAL_BASE_DATE ? parseDate_(MANUAL_BASE_DATE) : new Date());
-}
-
 /** スプレッドシートを開いたときにメニューを追加（このスクリプトがスプレッドシートに紐づく場合のみ有効） */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('バナー分析')
-    .addItem('基準日を指定して作成', 'promptAndCreateReport')
+    .addItem('基準日を指定して作成', 'createManualReport')
     .addToUi();
 }
 
-function promptAndCreateReport() {
-  const ui = SpreadsheetApp.getUi();
+/** 手動実行。基準日を入力するダイアログを出し、その基準日でファイルを作る */
+function createManualReport() {
+  let ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (e) {
+    throw new Error('入力ダイアログを出せません。GAS をスプレッドシートの「拡張機能 → Apps Script」に置き、'
+      + 'そのスプレッドシートを開いた状態で実行してください');
+  }
   const today = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd');
   const res = ui.prompt('基準日を指定',
     `yyyy/MM/dd で入力（空欄なら今日 ${today}）。基準日の前日までの 7/14/21/30 日間を集計します。`,
