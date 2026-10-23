@@ -21,6 +21,8 @@ const AD_ACCOUNT_ID = 'act_825232673399116';
 const API_VERSION = 'v21.0';
 const REPORT_FOLDER_ID = '1boFSaU9VM3VTTvQLNSYN5lfRMtQ5jLXq';
 const FILE_SUFFIX = '時点_Meta広告バナー分析';
+// Meta から画像が取れない広告は、このフォルダの verN.jpg をバナー画像として使う
+const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';
 
 // v2 / v4 に対応する action_type。初回実行後「アクション一覧」シートを見て確定させる。
 const ACTION_V2 = 'offsite_conversion.fb_pixel_add_to_cart';
@@ -129,11 +131,12 @@ function buildRows_(range, creatives) {
     const v2 = actions[ACTION_V2] || 0;
     const v4 = actions[ACTION_V4] || 0;
     const c = creatives[r.ad_id] || {};
-    const img = c.imageUrl || c.thumbnailUrl || '';
+    const img = c.thumbnailUrl || c.imageUrl || '';
+    const key = bannerKey_(r.ad_name);
 
     return [
-      img ? `=IMAGE("${img}")` : '',
-      bannerKey_(r.ad_name),
+      bannerImage_(r.ad_id, img, key),
+      key,
       r.ad_id, r.ad_name, r.campaign_name, r.adset_name, c.status || '',
       Number(r.impressions || 0), Number(r.reach || 0), Number(r.frequency || 0),
       Number(r.clicks || 0), Number(r.inline_link_clicks || 0),
@@ -175,6 +178,33 @@ function judge_(rows) {
     r[COL_JUDGE] = verdict;
     r[COL_JUDGE + 1] = reason;
   });
+}
+
+const imageCache_ = {};
+
+/**
+ * セルに埋め込む画像（CellImage）。外部URL参照の =IMAGE() は Meta の画像URLが
+ * 期限切れ・取得拒否で表示されないため、画像データ自体をセルに埋め込む。
+ * Meta のサムネイル → ドライブの verN.jpg の順に試し、どちらも無ければ空欄。
+ */
+function bannerImage_(adId, url, key) {
+  if (adId in imageCache_) return imageCache_[adId];
+  let blob = null;
+  if (url) {
+    const res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+    if (res.getResponseCode() === 200) blob = res.getBlob();
+  }
+  if (!blob && key) {
+    const files = DriveApp.getFolderById(BANNER_FOLDER_ID).searchFiles(`title contains '${key}.'`);
+    if (files.hasNext()) blob = files.next().getThumbnail();
+  }
+  imageCache_[adId] = blob
+    ? SpreadsheetApp.newCellImage()
+      .setSourceUrl(`data:${blob.getContentType()};base64,${Utilities.base64Encode(blob.getBytes())}`)
+      .setAltTextTitle(key || adId)
+      .build()
+    : '';
+  return imageCache_[adId];
 }
 
 /** 広告ID → { status, imageUrl, thumbnailUrl } */
