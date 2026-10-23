@@ -14,6 +14,10 @@
  *     （エディタから実行した場合、ダイアログはスプレッドシート側のタブに表示される。
  *       スプレッドシートのメニュー「バナー分析 → 基準日を指定して作成」からも実行できる）
  *
+ * 実行履歴:
+ *   実行のたびに、このスクリプトを置いたスプレッドシートの「実行履歴」シートに1行追記する
+ *   （成功・失敗とも）。
+ *
  * 前提:
  *   - スクリプトプロパティ META_ACCESS_TOKEN に ads_read 権限のシステムユーザートークン
  *   - システムユーザーに広告アカウントが割り当て済み
@@ -64,13 +68,16 @@ const HEADER_ROW = 2;
 const DATA_ROW = 3;
 const BANNER_FOLDER_URL = `https://drive.google.com/drive/folders/${BANNER_FOLDER_ID}`;
 
+const LOG_SHEET = '実行履歴';
+const LOG_HEADER = ['実行日時', '実行方法', '基準日', '結果', '作成ファイル', '広告数(1ヶ月)', '処理秒数', 'エラー内容'];
+
 const COL_SPEND = HEADER.indexOf('広告費');
 const COL_V2 = HEADER.indexOf('v2(カート)');
 const COL_JUDGE = HEADER.indexOf('判定');
 
 /** 毎週トリガーから呼ばれる。基準日 = 実行日 */
 function createWeeklyReport() {
-  return createReport_(new Date());
+  return createReport_(new Date(), '自動（毎週）');
 }
 
 /** スプレッドシートを開いたときにメニューを追加（このスクリプトがスプレッドシートに紐づく場合のみ有効） */
@@ -96,7 +103,7 @@ function createManualReport() {
     ui.ButtonSet.OK_CANCEL);
   if (res.getSelectedButton() !== ui.Button.OK) return;
   const input = res.getResponseText().trim();
-  const url = createReport_(input ? parseDate_(input) : new Date());
+  const url = createReport_(input ? parseDate_(input) : new Date(), '手動');
   ui.alert(`作成しました\n${url}`);
 }
 
@@ -109,7 +116,52 @@ function parseDate_(text) {
   return date;
 }
 
-function createReport_(baseDate) {
+/** レポートを作り、成否にかかわらず実行履歴に残す */
+function createReport_(baseDate, method) {
+  const started = Date.now();
+  const log = { method, baseDate, result: '失敗', fileName: '', url: '', adCount: '', error: '' };
+  try {
+    const report = buildReport_(baseDate);
+    Object.assign(log, report, { result: '成功' });
+    return report.url;
+  } catch (e) {
+    log.error = e.message;
+    throw e;
+  } finally {
+    log.seconds = Math.round((Date.now() - started) / 1000);
+    appendLog_(log);
+  }
+}
+
+/** 実行履歴シートに1行追記する。ログの失敗で本処理を失敗扱いにはしない */
+function appendLog_(log) {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return; // スプレッドシートに紐づいていない場合は残せない
+    let sheet = ss.getSheetByName(LOG_SHEET);
+    if (!sheet) {
+      sheet = ss.insertSheet(LOG_SHEET, 0);
+      sheet.appendRow(LOG_HEADER);
+      sheet.getRange(1, 1, 1, LOG_HEADER.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+    }
+    const fmt = (d, f) => Utilities.formatDate(d, 'Asia/Tokyo', f);
+    const fileCell = log.url
+      ? `=HYPERLINK("${log.url}", "${log.fileName.replace(/"/g, '""')}")`
+      : '';
+    sheet.appendRow([
+      fmt(new Date(), 'yyyy/MM/dd HH:mm:ss'), log.method, fmt(log.baseDate, 'yyyy/MM/dd'),
+      log.result, fileCell, log.adCount, log.seconds, log.error,
+    ]);
+    if (log.result !== '成功') {
+      sheet.getRange(sheet.getLastRow(), 1, 1, LOG_HEADER.length).setBackground('#f4cccc');
+    }
+  } catch (e) {
+    console.error(`実行履歴の記録に失敗: ${e.message}`);
+  }
+}
+
+function buildReport_(baseDate) {
   const label = Utilities.formatDate(baseDate, 'Asia/Tokyo', 'yyyyMMdd');
   const ss = SpreadsheetApp.create(label + FILE_SUFFIX);
   DriveApp.getFileById(ss.getId()).moveTo(DriveApp.getFolderById(REPORT_FOLDER_ID));
@@ -118,11 +170,13 @@ function createReport_(baseDate) {
   let actionTotals = {};
 
   const summary = {};
+  let adCount = 0;
 
   PERIODS.forEach(p => {
     const range = timeRange_(baseDate, p.days);
     const result = buildRows_(range, creatives);
     actionTotals = result.actionTotals; // 最後（最長期間）の値が残る
+    adCount = result.rows.length;
     result.rows.forEach(r => {
       const key = r[1] || r[3]; // 照合キーが無ければ広告名
       summary[key] = summary[key] || { img: r[0], cells: {} };
@@ -148,7 +202,7 @@ function createReport_(baseDate) {
   if (blank && ss.getSheets().length > 1) ss.deleteSheet(blank);
 
   Logger.log(ss.getUrl());
-  return ss.getUrl();
+  return { url: ss.getUrl(), fileName: ss.getName(), adCount };
 }
 
 function installWeeklyTrigger() {
