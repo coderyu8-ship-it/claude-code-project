@@ -48,6 +48,15 @@ const HEADER = [
   'CTR(全体)', 'リンクCTR', 'CPC', 'CPM', '広告費',
   'v2(カート)', 'v4(決済入力後)', 'CPA(v2)', 'CPA(v4)', '判定', '判定理由', '画像URL',
 ];
+// 黄色で強調する列
+const HIGHLIGHT_COLUMNS = ['広告名', 'IMP', 'クリック(全体)', 'CTR(全体)', '広告費', 'v2(カート)', 'v4(決済入力後)'];
+const HIGHLIGHT_COLOR = '#fff2cc';
+
+// 1行目: バナー画像フォルダのURL / 2行目: 見出し / 3行目〜: データ
+const HEADER_ROW = 2;
+const DATA_ROW = 3;
+const BANNER_FOLDER_URL = `https://drive.google.com/drive/folders/${BANNER_FOLDER_ID}`;
+
 const COL_SPEND = HEADER.indexOf('広告費');
 const COL_V2 = HEADER.indexOf('v2(カート)');
 const COL_JUDGE = HEADER.indexOf('判定');
@@ -283,19 +292,22 @@ function fetchAll_(path, params) {
 }
 
 function formatAdsSheet_(sheet, rowCount) {
+  HIGHLIGHT_COLUMNS.forEach(name => {
+    sheet.getRange(HEADER_ROW, HEADER.indexOf(name) + 1, rowCount + 1, 1).setBackground(HIGHLIGHT_COLOR);
+  });
   if (!rowCount) return;
   sheet.setColumnWidth(1, 140);
-  sheet.setRowHeights(2, rowCount, 140);
-  sheet.getRange(2, 13, rowCount, 2).setNumberFormat('0.00%');
-  sheet.getRange(2, 15, rowCount, 3).setNumberFormat('¥#,##0');
-  sheet.getRange(2, 20, rowCount, 2).setNumberFormat('¥#,##0');
+  sheet.setRowHeights(DATA_ROW, rowCount, 140);
+  sheet.getRange(DATA_ROW, 13, rowCount, 2).setNumberFormat('0.00%');
+  sheet.getRange(DATA_ROW, 15, rowCount, 3).setNumberFormat('¥#,##0');
+  sheet.getRange(DATA_ROW, 20, rowCount, 2).setNumberFormat('¥#,##0');
 }
 
 function formatSummarySheet_(sheet, rowCount) {
   if (!rowCount) return;
   sheet.setColumnWidth(1, 140);
-  sheet.setRowHeights(2, rowCount, 140);
-  const range = sheet.getRange(2, 3, rowCount, PERIODS.length);
+  sheet.setRowHeights(DATA_ROW, rowCount, 140);
+  const range = sheet.getRange(DATA_ROW, 3, rowCount, PERIODS.length);
   const rule = (text, color) => SpreadsheetApp.newConditionalFormatRule()
     .whenTextEqualTo(text).setBackground(color).setRanges([range]).build();
   sheet.setConditionalFormatRules([
@@ -305,10 +317,13 @@ function formatSummarySheet_(sheet, rowCount) {
 
 function writeSheet_(ss, name, header, rows, note, format) {
   const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
-  sheet.getRange(1, 1, 1, header.length).setValues([header]).setFontWeight('bold');
-  if (rows.length) sheet.getRange(2, 1, rows.length, header.length).setValues(rows);
-  sheet.getRange(1, header.length + 2)
-    .setValue(`取得: ${Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm')} / ${note}`);
-  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, 3).setValues([[
+    'バナー画像フォルダ',
+    BANNER_FOLDER_URL,
+    `取得: ${Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm')} / ${note}`,
+  ]]);
+  sheet.getRange(HEADER_ROW, 1, 1, header.length).setValues([header]).setFontWeight('bold');
+  if (rows.length) sheet.getRange(DATA_ROW, 1, rows.length, header.length).setValues(rows);
+  sheet.setFrozenRows(HEADER_ROW);
   if (format) format(sheet, rows.length);
 }
