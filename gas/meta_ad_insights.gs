@@ -25,7 +25,7 @@
  * 初回セットアップ:
  *   1. スクリプトプロパティに META_ACCESS_TOKEN を登録
  *   2. createManualReport() を実行して権限を承認・出力を確認
- *   3. installWeeklyTrigger() を1回だけ実行（毎週月曜 7時台に自動実行）
+ *   3. installWeeklyTrigger() を1回だけ実行（毎週木曜 9:30頃に自動実行）
  */
 
 const AD_ACCOUNT_ID = 'act_825232673399116';
@@ -210,7 +210,7 @@ function installWeeklyTrigger() {
     .filter(t => t.getHandlerFunction() === 'createWeeklyReport')
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('createWeeklyReport')
-    .timeBased().onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(7).inTimezone('Asia/Tokyo')
+    .timeBased().onWeekDay(ScriptApp.WeekDay.THURSDAY).atHour(9).nearMinute(30).inTimezone('Asia/Tokyo')
     .create();
 }
 
