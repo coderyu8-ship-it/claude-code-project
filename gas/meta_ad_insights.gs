@@ -38,9 +38,10 @@ const FILE_SUFFIX = '時点_Meta広告バナー分析';
 // バナー画像の置き場所。広告名の「verN」と同じ名前の画像（verN.jpg）をセルに埋め込む
 const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';
 
-// v2 / v4 に対応する action_type。初回実行後「アクション一覧」シートを見て確定させる。
-const ACTION_V2 = 'offsite_conversion.fb_pixel_add_to_cart';
-const ACTION_V4 = 'offsite_conversion.fb_pixel_add_payment_info';
+// v2 = 決済入力ページ遷移 / v4 = 購入後ページ遷移（数値管理シートと同じ定義）に対応する action_type。
+// 標準イベントを仮置き。初回実行後「アクション一覧」シートの件数を数値管理シートと突き合わせて確定させる。
+const ACTION_V2 = 'offsite_conversion.fb_pixel_initiate_checkout';
+const ACTION_V4 = 'offsite_conversion.fb_pixel_purchase';
 
 // 1ファイルに作るシート（期間ごと）。基準日の days 日前〜前日を集計する
 const PERIODS = [
@@ -60,10 +61,10 @@ const HEADER = [
   'バナー', 'バナー照合キー', '広告ID', '広告名', 'キャンペーン', '広告セット', '配信状態',
   'IMP', 'リーチ', 'フリークエンシー', 'クリック(全体)', 'リンククリック',
   'CTR(全体)', 'リンクCTR', 'CPC', 'CPM', '広告費',
-  'v2(カート)', 'v4(決済入力後)', 'CPA(v2)', 'CPA(v4)', '判定', '判定理由', '画像URL',
+  'v2(決済入力)', 'v4(購入)', 'CPA(v2)', 'CPA(v4)', '判定', '判定理由', '画像URL',
 ];
 // 黄色で強調する列
-const HIGHLIGHT_COLUMNS = ['広告名', 'IMP', 'クリック(全体)', 'CTR(全体)', '広告費', 'v2(カート)', 'v4(決済入力後)'];
+const HIGHLIGHT_COLUMNS = ['広告名', 'IMP', 'クリック(全体)', 'CTR(全体)', '広告費', 'v2(決済入力)', 'v4(購入)'];
 const HIGHLIGHT_COLOR = '#fff2cc';
 
 // 1行目: バナー画像フォルダのURL / 2行目: 見出し / 3行目〜: データ
@@ -75,7 +76,7 @@ const LOG_SHEET = '実行履歴';
 const LOG_HEADER = ['実行日時', '実行方法', '基準日', '結果', '作成ファイル', '広告数(1ヶ月)', '処理秒数', 'エラー内容'];
 
 const COL_SPEND = HEADER.indexOf('広告費');
-const COL_V2 = HEADER.indexOf('v2(カート)');
+const COL_V2 = HEADER.indexOf('v2(決済入力)');
 const COL_JUDGE = HEADER.indexOf('判定');
 
 /** 毎週トリガーから呼ばれる。基準日 = 実行日 */
