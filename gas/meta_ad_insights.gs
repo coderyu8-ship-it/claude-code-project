@@ -18,6 +18,9 @@
  *   実行のたびに、このスクリプトを置いたスプレッドシートの「実行履歴」シートに1行追記する
  *   （成功・失敗とも）。
  *
+ * 要因分析（factor_analysis.gs）:
+ *   「施策の効果」（内部要因）と「外部要因」のシートも同じファイルに作る。
+ *
  * 前提:
  *   - スクリプトプロパティ META_ACCESS_TOKEN に ads_read 権限のシステムユーザートークン
  *   - システムユーザーに広告アカウントが割り当て済み
@@ -194,6 +197,7 @@ function buildReport_(baseDate) {
     .sort((a, b) => actionTotals[b] - actionTotals[a])
     .map(k => [k, actionTotals[k], k === ACTION_V2 ? 'v2' : k === ACTION_V4 ? 'v4' : '']);
   writeSheet_(ss, 'アクション一覧', ['action_type', '合計(1ヶ月)', '割当'], actionRows, '1ヶ月');
+  writeFactorAnalysis_(ss, baseDate); // factor_analysis.gs
   ss.setActiveSheet(ss.getSheetByName('判定サマリー'));
   ss.moveActiveSheet(1);
 
