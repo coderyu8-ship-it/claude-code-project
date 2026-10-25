@@ -19,7 +19,7 @@
  *   （成功・失敗とも）。
  *
  * 要因分析（factor_analysis.gs）:
- *   「施策の効果」（内部要因）と「外部要因」のシートも同じファイルに作る。
+ *   「施策の効果」（内部要因）のシートも同じファイルに作る。外部要因の調査と考察は Claude の定期タスクが行う。
  *
  * 前提:
  *   - スクリプトプロパティ META_ACCESS_TOKEN に ads_read 権限のシステムユーザートークン
@@ -33,7 +33,7 @@
 
 const AD_ACCOUNT_ID = 'act_825232673399116';
 const API_VERSION = 'v21.0';
-const REPORT_FOLDER_ID = '1boFSaU9VM3VTTvQLNSYN5lfRMtQ5jLXq';
+const REPORT_FOLDER_ID = '1PK8daZZrLMI8hMnSjiIak06t9rUWdhGQ'; // ★★★週次分析・対策まとめ★★★
 const FILE_SUFFIX = '時点_Meta広告バナー分析';
 // バナー画像の置き場所。広告名の「verN」と同じ名前の画像（verN.jpg）をセルに埋め込む
 const BANNER_FOLDER_ID = '1XrrEhzGZZOHLRj6hFgUQf0gnCLfuxRuD';

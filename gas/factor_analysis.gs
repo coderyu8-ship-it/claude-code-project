@@ -5,10 +5,9 @@
  *    GAS を置いたスプレッドシートの「施策ログ」シートに書いた自社の施策ごとに、
  *    実施日の前7日間と後7日間の数値を比べ、何が起きたかをまとめる。
  *
- * 2. 外部要因「外部要因」
- *    Gemini（Google 検索付き）で、集計期間中の社会の風潮・出来事・季節要因を調べ、
- *    アカウント全体の数値変化と結び付けた仮説を出典 URL 付きで書く。
- *    スクリプトプロパティ GEMINI_API_KEY が無い場合は実行せず、その旨をシートに書く。
+ * 外部要因（社会の風潮・出来事）の調査と、数値の考察は GAS では行わない。
+ * 毎週木曜に Claude の定期タスクがこのレポートを読み、ウェブ調査のうえで
+ * 週次の分析ドキュメントを同じフォルダに作る。
  */
 
 const ACTION_LOG_SHEET = '施策ログ';
@@ -17,24 +16,14 @@ const ACTION_WINDOW_DAYS = 7;      // 施策の前後それぞれ何日間で比
 const ACTION_LOOKBACK_DAYS = 60;   // 基準日から何日前までの施策を評価するか
 const EFFECT_THRESHOLD = 0.1;      // CPA(v2) が ±10% 以上動いたら改善/悪化とみなす
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const BUSINESS_CONTEXT =
-  '老舗うどん店（田丸屋）の EC。生うどん・半生うどん・冷凍うどんの詰め合わせを、'
-  + '個人ギフト・法人ギフト・お中元/お歳暮向けに Meta 広告（Facebook/Instagram）で販売している。日本国内向け。';
-
 const DAY_MS = 24 * 3600 * 1000;
 
-/** レポート作成から呼ぶ。どちらかが失敗しても、もう一方とレポート本体は止めない */
+/** レポート作成から呼ぶ。失敗してもレポート本体は止めない */
 function writeFactorAnalysis_(ss, baseDate) {
   try {
     writeActionEffects_(ss, baseDate);
   } catch (e) {
     writeMessageSheet_(ss, '施策の効果', `施策の効果を作れませんでした: ${e.message}`);
-  }
-  try {
-    writeExternalFactors_(ss, baseDate);
-  } catch (e) {
-    writeMessageSheet_(ss, '外部要因', `外部要因を調べられませんでした: ${e.message}`);
   }
 }
 
@@ -79,7 +68,7 @@ function writeActionEffects_(ss, baseDate) {
   });
 
   writeSheet_(ss, '施策の効果', header, rows,
-    `施策の前後${ACTION_WINDOW_DAYS}日間を比較。外部要因（季節・競合など）の影響も含まれるので「外部要因」シートと併せて読む`);
+    `施策の前後${ACTION_WINDOW_DAYS}日間を比較。外部要因（季節・競合など）の影響も含まれる`);
   const sheet = ss.getSheetByName('施策の効果');
   const n = rows.length;
   sheet.getRange(DATA_ROW, 7, n, 2).setNumberFormat('¥#,##0');
@@ -172,91 +161,6 @@ function judgeEffect_(b, f, afterDays) {
     reading = 'CTR・v2 の改善が CPA に反映されている。施策が効いた可能性が高い';
   }
   return { result, note: facts.join(' / ') + (reading ? `。${reading}` : '') };
-}
-
-// ---------------------------------------------------------------- 外部要因
-
-function writeExternalFactors_(ss, baseDate) {
-  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-  if (!apiKey) {
-    writeMessageSheet_(ss, '外部要因',
-      'スクリプトプロパティ GEMINI_API_KEY が未設定のため、外部要因の調査をしていません。'
-      + 'https://aistudio.google.com/apikey でキーを取得して登録してください。');
-    return;
-  }
-
-  const cur = { since: ymd_(new Date(baseDate.getTime() - 7 * DAY_MS)), until: ymd_(new Date(baseDate.getTime() - DAY_MS)) };
-  const prev = { since: ymd_(new Date(baseDate.getTime() - 14 * DAY_MS)), until: ymd_(new Date(baseDate.getTime() - 8 * DAY_MS)) };
-  const c = aggregate_(fetchAdInsights_(cur), '全体');
-  const p = aggregate_(fetchAdInsights_(prev), '全体');
-  const line = (label, t) =>
-    `${label}: 広告費¥${Math.round(t.spend)} / IMP ${t.imp} / CTR ${(t.ctr * 100).toFixed(2)}% / `
-    + `CPM ¥${Math.round(t.cpm)} / v2 ${t.v2}件 / CPA(v2) ${t.cpa ? '¥' + Math.round(t.cpa) : '-'}`;
-
-  const prompt = [
-    `事業: ${BUSINESS_CONTEXT}`,
-    `対象期間: ${cur.since}〜${cur.until}（比較: ${prev.since}〜${prev.until}）`,
-    'アカウント全体の数値:',
-    line('今週', c),
-    line('前週', p),
-    '',
-    'Google 検索で、対象期間とその直前に日本で起きた出来事・社会の風潮・季節要因のうち、',
-    'この広告の数値に影響しうるものを調べてください。観点の例:',
-    '- ギフト商戦（お歳暮・お中元・年末年始・母の日など）の時期と、競合の出稿状況',
-    '- 食品・うどん・ギフトに関するニュース、トレンド、SNS の話題',
-    '- 天候・気温（温かい麺の需要など）、祝日・連休・給料日',
-    '- 景気・物価・消費の動向',
-    '- Meta 広告の仕様変更・障害・広告費の相場の変化',
-    '',
-    '出力は次の形式の行だけにしてください（見出しや前置きは不要、5〜8行）:',
-    '要因 | 起きたこと（日付つき） | 数値への影響の仮説（どの指標がどう動くか） | 今週の数値との整合（合う/合わない/不明） | 確度（高/中/低）',
-    '検索で確認できなかったことは書かず、推測の場合は確度を「低」にしてください。',
-  ].join('\n');
-
-  const res = UrlFetchApp.fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-    {
-      method: 'post',
-      contentType: 'application/json',
-      muteHttpExceptions: true,
-      payload: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        tools: [{ google_search: {} }],
-        generationConfig: { temperature: 0.3 },
-      }),
-    });
-  const body = JSON.parse(res.getContentText());
-  if (body.error) throw new Error(`Gemini API エラー: ${body.error.message}`);
-
-  const cand = (body.candidates || [])[0] || {};
-  const text = ((cand.content || {}).parts || []).map(x => x.text || '').join('');
-  const sources = ((cand.groundingMetadata || {}).groundingChunks || [])
-    .map(ch => ch.web).filter(Boolean)
-    .map(w => `=HYPERLINK("${w.uri}", "${String(w.title || w.uri).replace(/"/g, '""')}")`);
-
-  const rows = text.split('\n')
-    .map(l => l.replace(/^[-*\s]+/, '').split('|').map(s => s.trim()))
-    .filter(cols => cols.length >= 5 && cols[0] && cols[0] !== '要因')
-    .map(cols => cols.slice(0, 5));
-
-  const header = ['要因', '起きたこと', '数値への影響の仮説', '今週の数値との整合', '確度'];
-  writeSheet_(ss, '外部要因', header, rows,
-    `${cur.since}〜${cur.until} / Gemini + Google検索による仮説。出典が無い・確度「低」は裏付けなしとして扱う`);
-
-  const sheet = ss.getSheetByName('外部要因');
-  let row = DATA_ROW + rows.length + 1;
-  sheet.getRange(row++, 1).setValue('アカウント全体').setFontWeight('bold');
-  sheet.getRange(row++, 1).setValue(line('今週', c));
-  sheet.getRange(row++, 1).setValue(line('前週', p));
-  row++;
-  sheet.getRange(row++, 1).setValue(`出典（${sources.length}件）`).setFontWeight('bold');
-  if (sources.length) {
-    sheet.getRange(row, 1, sources.length, 1).setValues(sources.map(s => [s]));
-  } else {
-    sheet.getRange(row, 1).setValue('出典が0件のため、上の仮説はすべて裏付けなしとして扱うこと');
-  }
-  if (rows.length) sheet.getRange(DATA_ROW, 1, rows.length, header.length).setWrap(true);
-  sheet.setColumnWidths(1, header.length, 260);
 }
 
 // ---------------------------------------------------------------- 共通
