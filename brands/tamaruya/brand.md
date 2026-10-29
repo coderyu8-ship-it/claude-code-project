@@ -53,13 +53,13 @@ LPには載っているが、バナーで使う前に**根拠資料をクライ�
 
 | 素材 | 場所 | 備考 |
 |---|---|---|
-| ロゴ（家紋＋TAMARUYA＋ESTD.1582） | `brands/tamaruya/assets/logo_estd1582_960.jpg`（Drive原本：ロゴ・家紋ESTD1582 画像サイズ960×960.jpg / id `1HUq-1VhG9bXh37KAGCInEj52ht6Jl18J`） | 黒×生成り背景のJPG。**透過ではない**。写真に重ねるときは白・生成りの座布団を敷くか、透過PNGをクライアントからもらう |
+| ロゴ（正方形・家紋＋TAMARUYA＋ESTD.1582） | `brands/tamaruya/assets/logo_estd1582_960.jpg`（Drive原本：ロゴ・家紋ESTD1582 画像サイズ960×960.jpg / id `1HUq-1VhG9bXh37KAGCInEj52ht6Jl18J`） | **バナーには使わない**。正規ロゴは下の `logo_3631_tamaruya.jpg` |
 | 商品写真（プロ撮影 1X2A*.jpg、各約35MB） | Drive フォルダ `1NuhXHDyY-lrmH-PHcfSBw_awkwCC6Svm` | 中身の対応表は未作成（下記） |
 | 撮影データ一式 | 同フォルダ `2026_0719_TAMARUYA_PH.zip`、`20251215デジアサ 大阪髙島屋 煮込み・黒舞茸.zip` | |
 | 外観写真 | 同フォルダ `田丸屋外観 (5).jpg`、`外観 本店のみ (1).png` | 「老舗」訴求に使える |
 | 圧縮データ | Drive フォルダ `17RuyO3TrhzUFCflwERCPrs15U7hwixJT`（圧縮データ込み） | |
 
-| ロゴ横組み（ESTD.1582 TAMARUYA 田丸屋＋家紋） | `brands/tamaruya/assets/logo_3631_tamaruya.jpg`（Drive id `1GIvNzqx9l9NptysJrNXOMRlelYMburun`） | 黒背景に生成り文字、1080×1080。暗い写真の上か、黒帯の上に置く。**バナーではこちらを優先** |
+| **正規ロゴ**（横組み・ESTD.1582 TAMARUYA 田丸屋＋家紋） | `brands/tamaruya/assets/logo_3631_tamaruya.jpg`（Drive id `1GIvNzqx9l9NptysJrNXOMRlelYMburun`） | **バナーのロゴは必ずこれを貼る**。黒背景に生成り文字、1080×1080。暗い写真の上か、黒帯の上に置く |
 
 ### 商品写真の対応表
 
