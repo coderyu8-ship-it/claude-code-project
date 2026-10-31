@@ -13,12 +13,15 @@ from PIL import Image
 
 A, OUT = sys.argv[1], sys.argv[2]
 FONT = 'Noto Sans JP'
-INK = RGBColor(0x2B, 0x2B, 0x2B)
-SUB = RGBColor(0x5E, 0x5E, 0x5E)
-GOLD = RGBColor(0xC6, 0xA1, 0x5B)
-CREAM = RGBColor(0xF7, 0xF3, 0xEA)
-LINE = RGBColor(0xE5, 0xDC, 0xC8)
+INK = RGBColor(0x2A, 0x2F, 0x33)      # 文字：墨色
+SUB = RGBColor(0x5F, 0x66, 0x6B)      # 補足文字
+TEAL = RGBColor(0x14, 0x5F, 0x6B)     # 主色：ディープティール
+TERRA = RGBColor(0xD9, 0x76, 0x4A)    # アクセント：テラコッタ（数字・価格・おすすめだけ）
+IVORY = RGBColor(0xFA, 0xF6, 0xEF)    # 背景：アイボリー
+CREAM = RGBColor(0xF1, 0xE9, 0xDC)    # 強調ボックス：サンド
+LINE = RGBColor(0xE6, 0xDD, 0xCF)     # 罫線：ベージュ
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
+GOLD = TEAL                            # 旧コードの構造色をティールに置換
 W, H = 12192000, 6858000
 MX = 762000          # 左右マージン
 CW = W - 2 * MX      # コンテンツ幅
@@ -122,7 +125,7 @@ def base(label, title, speech):
 
 def section(no, title, sub, speech):
     s = new(dark=True)
-    text(s, MX, 2300000, 3000000, 900000, no, 54, True, GOLD)
+    text(s, MX, 2300000, 3000000, 900000, no, 54, True, TERRA)
     box(s, MX, 3250000, 900000, 38100, fill=GOLD)
     text(s, MX, 3450000, CW, 700000, title, 36, True, WHITE)
     text(s, MX, 4250000, CW, 500000, sub, 15, False, RGBColor(0xCF, 0xCF, 0xCF))
@@ -130,7 +133,7 @@ def section(no, title, sub, speech):
     return s
 
 
-def tag(s, x, y, label, fill=INK, color=WHITE, size=10, w=None):
+def tag(s, x, y, label, fill=TEAL, color=WHITE, size=10, w=None):
     w = w or (len(label) * 150000 + 300000)
     b = box(s, x, y, w, 300000, fill=fill)
     tf = b.text_frame
@@ -159,55 +162,30 @@ def card(s, x, y, w, h, head, body, num=None, fill=WHITE, head_size=16, body_siz
 
 def quote(s, x, y, w, h, q, who):
     box(s, x, y, w, h, fill=CREAM)
-    text(s, x + 300000, y + 150000, 600000, 600000, '“', 54, True, GOLD)
+    text(s, x + 300000, y + 150000, 600000, 600000, '“', 54, True, TERRA)
     text(s, x + 300000, y + 750000, w - 600000, h - 1300000, q, 14, False, INK, spacing=1.5)
     text(s, x + 300000, y + h - 500000, w - 600000, 300000, who, 11, True, SUB, PP_ALIGN.RIGHT)
 
 
-# ---- 元データ（旧資料）のデザインを土台にする -----------------------------------
-import copy as _copy
-from pptx.opc.constants import RELATIONSHIP_TYPE as _RT
-_ORIG = sys.argv[3]
-prs = Presentation(_ORIG)
-_tpl = prs.slides[3]                       # 背景の網目・上端の金ライン・フッター線を持つ旧スライド
-_tpl_shapes = list(_tpl.shapes)
-_BG = [_tpl_shapes[i]._element for i in (0, 5, 1)]   # 網目背景グループ、上端ライン、フッター線
-_REL = {rId: rel for rId, rel in _tpl.part.rels.items()}
-BLANK = _tpl.slide_layout
-_keep = []
-
-
-def _drop_original_slides():
-    lst = prs.slides._sldIdLst
-    for sid in list(lst)[:18]:
-        prs.part.drop_rel(sid.rId)
-        lst.remove(sid)
-
-
-def _paste_bg(s, plain=False):
-    tree = s.shapes._spTree
-    for el in (_BG[1:] if plain else _BG):
-        new_el = _copy.deepcopy(el)
-        for node in new_el.iter():
-            for k, v in list(node.attrib.items()):
-                if k.endswith('}embed') and v in _REL:
-                    node.set(k, s.part.relate_to(_REL[v]._target, _RT.IMAGE))
-        tree.insert(2, new_el) if el is _BG[0] else tree.append(new_el)
-
-
+# ---- A案デザイン：アイボリー地＋ティールの骨格＋テラコッタの強調 ---------------------
 def new(dark=False):
     s = prs.slides.add_slide(BLANK)
+    s.background.fill.solid()
+    s.background.fill.fore_color.rgb = IVORY
     page[0] += 1
     return s
 
 
 def base(label, title, speech, plain=False):
     s = new()
-    _paste_bg(s, plain)
-    text(s, MX, 571500, CW, 260000, label, 10.5, True, GOLD)
-    text(s, MX, 880025, CW, 600000, title, 27, True)
-    text(s, MX, 6534150, 4000000, 200000, '© U-Writing All Rights Reserved.', 8, False, SUB)
-    text(s, W - MX - 600000, 6470000, 600000, 260000, str(page[0]), 14, True, INK, PP_ALIGN.RIGHT)
+    box(s, 0, 0, Emu(W), Emu(76200), fill=TEAL)
+    box(s, MX, 600000, 76200, 820000, fill=TEAL)
+    text(s, MX + 230000, 560000, CW, 260000, label, 10.5, True, TEAL)
+    text(s, MX + 230000, 840000, CW - 230000, 600000, title, 26, True, INK)
+    box(s, MX, 6380000, CW, 9525, fill=LINE)
+    text(s, MX, 6480000, 4000000, 200000, '© U-Writing All Rights Reserved.', 8, False, SUB)
+    pg = box(s, W - MX - 420000, 6430000, 420000, 300000, fill=TEAL, shape=MSO_SHAPE.ROUNDED_RECTANGLE)
+    text(s, W - MX - 420000, 6430000, 420000, 300000, str(page[0]), 11, True, WHITE, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
     notes(s, speech)
     return s
 
@@ -216,19 +194,28 @@ def section(no, title, sub, speech):
     s = base(no or 'SECTION', title, speech)
     text(s, MX, 1900000, CW, 500000, sub, 16, False, SUB)
     return s
-
-_drop_original_slides()
 # ================================================================ slides
 # 1 表紙 ---------------------------------------------------------------
 s = new()
-cov = Image.open(f'{A}/cover.png')
-cov.crop((430, 0, cov.size[0], cov.size[1])).save(f'{A}/cover_crop.png')
-pic(s, f'{A}/cover_crop.png', W - 6300000, 0, h=H)
-text(s, MX, 1500000, 6000000, 300000, 'U-ライティング サービスのご案内', 13, True, SUB)
-box(s, MX, 1900000, 700000, 38100, fill=GOLD)
-text(s, MX, 2150000, 6300000, 1800000, ['マーケティング迷子を、', '減らす。'], 38, True, spacing=1.15)
-text(s, MX, 3950000, 6000000, 400000, '薬機法を守りながら“売れる”広告づくりと集客支援', 15, False, SUB)
-text(s, MX, 5300000, 6000000, 600000, [('集客プランナー / ライター', 11, True, GOLD), ('上原 龍之介', 18, True, INK)])
+box(s, W - 4200000, 0, 4200000, H, fill=TEAL)
+_ph = Image.open(f'{A}/profile.jpg').convert('RGB')
+_sz = min(_ph.size)
+_ph = _ph.crop(((_ph.size[0] - _sz) // 2, 0, (_ph.size[0] - _sz) // 2 + _sz, _sz)).resize((900, 900))
+from PIL import ImageDraw as _D
+_m = Image.new('L', (900, 900), 0)
+_D.Draw(_m).ellipse((0, 0, 899, 899), fill=255)
+_c = Image.new('RGBA', (900, 900), (0, 0, 0, 0))
+_c.paste(_ph, (0, 0), _m)
+_c.save(f'{A}/profile_circle.png')
+ring = box(s, W - 3650000, 1350000, 3100000, 3100000, fill=IVORY, shape=MSO_SHAPE.OVAL)
+pic(s, f'{A}/profile_circle.png', W - 3550000, 1450000, w=2900000)
+text(s, W - 4200000, 4750000, 4200000, 700000, [('集客プランナー / ライター', 12, True, WHITE), ('上原 龍之介', 22, True, WHITE)], align=PP_ALIGN.CENTER)
+box(s, 0, 0, W - 4200000, 76200, fill=TERRA)
+text(s, MX, 1450000, 6500000, 300000, 'U-ライティング サービスのご案内', 13, True, TEAL)
+box(s, MX, 1880000, 700000, 50800, fill=TERRA)
+text(s, MX, 2150000, 6600000, 1800000, ['マーケティング迷子を、', '減らす。'], 40, True, INK, spacing=1.2)
+text(s, MX, 4050000, 6600000, 400000, '薬機法を守りながら“売れる”広告づくりと集客支援', 15, False, SUB)
+text(s, MX, 5600000, 6600000, 300000, 'U-Writing', 11, True, TEAL)
 notes(s, """
 【画面共有はまだしない】①アイスブレイクは顔を見て話す。
 
@@ -257,7 +244,7 @@ cw, gap = 2520000, 196000
 for i, (n, h_, b_) in enumerate(steps):
     x = MX + i * (cw + gap)
     box(s, x, 1900000, cw, 3600000, fill=CREAM if i == 0 else WHITE, line=LINE)
-    text(s, x + 280000, 2150000, cw, 700000, n, 40, True, GOLD)
+    text(s, x + 280000, 2150000, cw, 700000, n, 40, True, TERRA)
     text(s, x + 280000, 3000000, cw - 400000, 500000, h_, 18, True)
     text(s, x + 280000, 3650000, cw - 400000, 1200000, b_.split('\n'), 12, False, SUB, spacing=1.5)
 text(s, MX, 5700000, CW, 400000, '※ 最初は○○様のお話を中心に伺います', 12, False, SUB)
@@ -329,9 +316,9 @@ voices_ = [('高いお金をかけたのに、\n成果が出ない', '数十万�
 cw = 3400000
 for i, (h_, b_) in enumerate(voices_):
     card(s, MX + i * (cw + 234000), 1700000, cw, 2350000, h_, b_, num=f'よく聞く声 0{i+1}', head_size=15, body_size=12)
-box(s, MX, 4300000, CW, 1750000, fill=INK)
+box(s, MX, 4300000, CW, 1750000, fill=TEAL)
 text(s, MX, 4450000, CW, 400000, '頑張っているのに、何にお金と時間を使えばいいか分からない。私はこれを', 15, False, WHITE, PP_ALIGN.CENTER)
-text(s, MX, 4900000, CW, 700000, '「マーケティング迷子」', 34, True, GOLD, PP_ALIGN.CENTER)
+text(s, MX, 4900000, CW, 700000, '「マーケティング迷子」', 34, True, TERRA, PP_ALIGN.CENTER)
 text(s, MX, 5550000, CW, 400000, 'と呼んでいます。一人でも減らしたい。それが私の仕事の理由です。', 15, False, WHITE, PP_ALIGN.CENTER)
 
 # 10 私の約束 --------------------------------------------------------------
@@ -355,7 +342,7 @@ for i, (h_, b_) in enumerate(promises):
     y = 1750000 + (i // 2) * (ch + 200000)
     box(s, x, y, cw, ch, fill=WHITE, line=LINE)
     box(s, x, y, 76200, ch, fill=GOLD)
-    text(s, x + 350000, y + 300000, 800000, 500000, f'0{i+1}', 24, True, GOLD)
+    text(s, x + 350000, y + 300000, 800000, 500000, f'0{i+1}', 24, True, TERRA)
     text(s, x + 1100000, y + 330000, cw - 1350000, 500000, h_, 17, True)
     text(s, x + 1100000, y + 900000, cw - 1350000, 800000, b_, 12, False, SUB, spacing=1.5)
 
@@ -378,8 +365,8 @@ for i, (k, v) in enumerate(principles):
     y = 1650000 + i * 880000
     box(s, MX, y, CW, 760000, fill=WHITE, line=LINE)
     box(s, MX, y, 76200, 760000, fill=GOLD)
-    text(s, MX + 300000, y + 110000, 900000, 540000, f'0{i+1}', 22, True, GOLD, anchor=MSO_ANCHOR.MIDDLE)
-    tag(s, MX + 1150000, y + 230000, k, fill=INK, size=11, w=1300000)
+    text(s, MX + 300000, y + 110000, 900000, 540000, f'0{i+1}', 22, True, TERRA, anchor=MSO_ANCHOR.MIDDLE)
+    tag(s, MX + 1150000, y + 230000, k, fill=TEAL, size=11, w=1300000)
     text(s, MX + 2750000, y + 110000, CW - 3000000, 540000, v, 17, True, INK, anchor=MSO_ANCHOR.MIDDLE)
 
 # 広告づくりの考え方：原則①〜⑤（LPスクショ） -----------------------------------
@@ -468,7 +455,7 @@ for i, (ic, kind, name, who, items, price, col) in enumerate(svc):
     tag(s, x + 350000, 2900000, who, fill=CREAM, color=INK, size=13, w=cw - 700000)
     text(s, x + 350000, 3450000, cw - 700000, 1600000, ['✓ ' + t for t in items], 13, False, SUB, spacing=1.6)
     box(s, x + 350000, 5250000, cw - 700000, 9525, fill=LINE)
-    text(s, x + 350000, 5400000, cw - 700000, 500000, price, 20, True, GOLD, PP_ALIGN.RIGHT)
+    text(s, x + 350000, 5400000, cw - 700000, 500000, price, 20, True, TERRA, PP_ALIGN.RIGHT)
 
 # 強み ---------------------------------------------------------------------
 s = base('OUR STRENGTHS', 'U-ライティングの2つの強み', """
@@ -552,7 +539,7 @@ for no, tg, title, prob, act, big, small, img, line in cases:
         for k, (st, desc) in enumerate([('Meta広告運用', '見込み客を集める'), ('LP改修', '離脱を減らし、成約率を上げる'), ('LINEステップ配信', '教育から成約までの導線を整える')]):
             y = 1600000 + k * 1250000
             box(s, rx, y, rw, 1000000, fill=WHITE, line=LINE)
-            text(s, rx + 250000, y + 180000, 700000, 600000, f'0{k+1}', 26, True, GOLD)
+            text(s, rx + 250000, y + 180000, 700000, 600000, f'0{k+1}', 26, True, TERRA)
             text(s, rx + 1000000, y + 200000, rw - 1200000, 400000, st, 16, True)
             text(s, rx + 1000000, y + 580000, rw - 1200000, 300000, desc, 12, False, SUB)
         tri = box(s, rx + rw // 2 - 250000, 5330000, 500000, 250000, fill=GOLD, shape=MSO_SHAPE.ISOSCELES_TRIANGLE)
@@ -572,7 +559,7 @@ for i, (h_, q, who) in enumerate(voices):
     x = MX + i * (cw + 234000)
     box(s, x, 1700000, cw, 4400000, fill=CREAM)
     tag(s, x + 250000, 1950000, h_, fill=GOLD, w=len(h_) * 170000 + 300000)
-    text(s, x + 250000, 2450000, 500000, 600000, '“', 48, True, GOLD)
+    text(s, x + 250000, 2450000, 500000, 600000, '“', 48, True, TERRA)
     text(s, x + 250000, 3050000, cw - 500000, 2300000, q, 13, False, INK, spacing=1.6)
     text(s, x + 250000, 5550000, cw - 500000, 300000, who, 11, True, SUB, PP_ALIGN.RIGHT)
 
@@ -596,11 +583,11 @@ groups = [('LINE・広告', [('17.12%', '化粧品の販促LINEシナリオ', '2
 cw = 3400000
 for i, (g, items) in enumerate(groups):
     x = MX + i * (cw + 234000)
-    tag(s, x, 1600000, g, fill=INK, w=cw)
+    tag(s, x, 1600000, g, fill=TEAL, w=cw)
     for k, (big, what, sub) in enumerate(items):
         y = 2050000 + k * 1380000
         box(s, x, y, cw, 1250000, fill=WHITE, line=LINE)
-        text(s, x + 220000, y + 150000, cw - 440000, 450000, big, 20, True, GOLD)
+        text(s, x + 220000, y + 150000, cw - 440000, 450000, big, 20, True, TERRA)
         text(s, x + 220000, y + 600000, cw - 440000, 300000, what, 12, True)
         text(s, x + 220000, y + 900000, cw - 440000, 300000, sub, 10, False, SUB)
 text(s, MX, 6150000, CW, 250000, '※ サービスサイト（https://www.u-promotion.com/）掲載の実績より', 9, False, SUB)
@@ -622,7 +609,7 @@ for i, (name, unit, price, desc) in enumerate(plans):
     text(s, x + 300000, 1680000, cw - 600000, 350000, name, 15, True)
     text(s, x + 300000, 2100000, cw - 2900000, 350000, desc, 11, False, SUB)
     text(s, x + cw - 2600000, 2020000, 600000, 400000, unit, 12, False, SUB)
-    text(s, x + cw - 2100000, 1900000, 1850000, 600000, price, 24, True, GOLD, PP_ALIGN.RIGHT)
+    text(s, x + cw - 2100000, 1900000, 1850000, 600000, price, 24, True, TERRA, PP_ALIGN.RIGHT)
 menu = [('Web制作', 'LP制作・HP制作（Wix／ペライチ／WordPress）', '100,000円〜'),
         ('Web制作', 'LPライティング（構成・原稿・ワイヤー作成）', '80,000円〜'),
         ('SNS・広告', '公式LINE構築＋運用（配信代行含む）', '初月50,000円〜／月額30,000円〜'),
@@ -637,7 +624,7 @@ for i, row_ in enumerate([('カテゴリー', '各種制作メニュー', '価�
     for j, v in enumerate(row_):
         c = tbl.cell(i, j)
         c.fill.solid()
-        c.fill.fore_color.rgb = INK if i == 0 else (CREAM if i % 2 == 0 else WHITE)
+        c.fill.fore_color.rgb = TEAL if i == 0 else (CREAM if i % 2 == 0 else WHITE)
         c.vertical_anchor = MSO_ANCHOR.MIDDLE
         c.margin_left = c.margin_right = Emu(150000)
         c.margin_top = c.margin_bottom = Emu(30000)
@@ -669,7 +656,7 @@ for i, (lab, h_, price, b_) in enumerate(nexts):
     tag(s, x + 250000, 2600000, lab, fill=GOLD if i == 0 else INK, w=len(lab) * 170000 + 300000)
     text(s, x + 250000, 3150000, cw - 500000, 500000, f'0{i+1}  {h_}', 20, True)
     if price:
-        text(s, x + 250000, 3750000, cw - 500000, 500000, price, 22, True, GOLD)
+        text(s, x + 250000, 3750000, cw - 500000, 500000, price, 22, True, TERRA)
     text(s, x + 250000, 4450000, cw - 500000, 1300000, b_, 13, False, SUB, spacing=1.5)
 
 # 紹介：5つの理由をそのまま紹介のきっかけに ------------------------------------
@@ -688,9 +675,9 @@ for i, (n, q) in enumerate(voices_kw):
     y = 1600000 + i * 780000
     box(s, MX, y, CW, 680000, fill=CREAM)
     box(s, MX, y, 76200, 680000, fill=GOLD)
-    text(s, MX + 300000, y + 100000, 700000, 480000, n, 18, True, GOLD, anchor=MSO_ANCHOR.MIDDLE)
+    text(s, MX + 300000, y + 100000, 700000, 480000, n, 18, True, TERRA, anchor=MSO_ANCHOR.MIDDLE)
     text(s, MX + 1100000, y + 100000, CW - 1400000, 480000, q, 16, True, INK, anchor=MSO_ANCHOR.MIDDLE)
-text(s, MX, 5600000, CW, 500000, [('合言葉は「マーケティング迷子」', 20, True, GOLD)], align=PP_ALIGN.CENTER)
+text(s, MX, 5600000, CW, 500000, [('合言葉は「マーケティング迷子」', 20, True, TERRA)], align=PP_ALIGN.CENTER)
 
 # 27 ご紹介いただきたい方 ----------------------------------------------------
 s = base('WHO TO INTRODUCE', 'ご紹介いただきたい方', """
@@ -720,7 +707,7 @@ for i, (h_, pct, a_, b_) in enumerate(fees):
     y = 1700000 + i * 1650000
     box(s, MX, y, 5300000, 1450000, fill=CREAM)
     text(s, MX + 300000, y + 220000, 4800000, 350000, h_, 13, True)
-    text(s, MX + 300000, y + 600000, 1700000, 750000, pct, 40, True, GOLD)
+    text(s, MX + 300000, y + 600000, 1700000, 750000, pct, 40, True, TERRA)
     text(s, MX + 2000000, y + 680000, 3200000, 300000, a_, 13, True)
     text(s, MX + 2000000, y + 1000000, 3200000, 300000, b_, 10, False, SUB)
 flow = [('ご紹介・おつなぎ', 'お困りの方をご紹介ください'), ('商談・ご提案', 'ヒアリングと提案はすべて私が行います'),
@@ -729,7 +716,7 @@ fx = MX + 5700000
 for k, (h_, b_) in enumerate(flow):
     y = 1700000 + k * 850000
     box(s, fx, y, CW - 5700000, 720000, fill=WHITE, line=LINE)
-    o = box(s, fx + 200000, y + 160000, 400000, 400000, fill=INK, shape=MSO_SHAPE.OVAL)
+    o = box(s, fx + 200000, y + 160000, 400000, 400000, fill=TEAL, shape=MSO_SHAPE.OVAL)
     text(s, fx + 200000, y + 160000, 400000, 400000, str(k + 1), 12, True, WHITE, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
     text(s, fx + 800000, y + 120000, 3800000, 300000, h_, 13, True)
     text(s, fx + 800000, y + 400000, 3800000, 300000, b_, 10, False, SUB)
@@ -777,7 +764,7 @@ for i, (name, price, unit, items, who) in enumerate(plans):
     text(s, x + 250000, y + 230000, cw - 500000, 300000, f'STEP {i+1}', 11, True, GOLD)
     text(s, x + 250000, y + 520000, cw - 500000, 450000, name, 20, True)
     text(s, x + 250000, y + 1050000, cw - 500000, 500000, [(f'{unit}  ', 11, False, SUB)], 11)
-    text(s, x + 900000, y + 960000, cw - 1150000, 500000, price, 20, True, GOLD)
+    text(s, x + 900000, y + 960000, cw - 1150000, 500000, price, 20, True, TERRA)
     text(s, x + 250000, y + 1600000, cw - 500000, 1700000, ['・' + t for t in items], 12, False, INK, spacing=1.5)
     text(s, x + 250000, y + hh - 450000, cw - 500000, 300000, '→ ' + who, 11, True, SUB)
 text(s, MX, 1600000, 5000000, 400000, '小さく始めて、必要なら次へ。', 14, True, INK)
