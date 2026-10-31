@@ -366,7 +366,7 @@ method = [
 → ここから「なので私は、作る（制作）と考える（コンサル）の両方をやっています」とサービスにつなげる。"""),
 ]
 for i, (img, title_, ng, how, point, case_, speech) in enumerate(method):
-    s = base(f'MY METHOD  原則 0{i+1}', title_, speech + ("\n【近い事例】" + case_ if case_ else ''))
+    s = base(f'MY METHOD  原則 0{i+1}', title_, speech)
     iw, ih = Image.open(f'{A}/{img}').size
     h_ = 4500000
     w_ = int(h_ * iw / ih)
@@ -383,8 +383,6 @@ for i, (img, title_, ng, how, point, case_, speech) in enumerate(method):
     text(s, rx + 250000, 2830000, rw - 400000, 300000, '私はこう作る', 11, True, GOLD)
     text(s, rx + 250000, 3150000, rw - 400000, 1800000, how, 13, False, INK, spacing=1.55)
     text(s, rx, 5150000, rw, 450000, point, 12, True, INK, spacing=1.35)
-    if case_:
-        text(s, rx, 5700000, rw, 400000, '関連事例 ▶ ' + case_, 10, False, SUB, spacing=1.3)
 
 
 # サービス ---------------------------------------------------------------
@@ -548,34 +546,48 @@ for i, (g, items) in enumerate(groups):
         text(s, x + 220000, y + 900000, cw - 440000, 300000, sub, 10, False, SUB)
 text(s, MX, 6150000, CW, 250000, '※ サービスサイト（https://www.u-promotion.com/）掲載の実績より', 9, False, SUB)
 
-# 23 料金一覧 ---------------------------------------------------------------
+# 料金一覧（制作代行・顧問プラン・各種制作） --------------------------------------
 s = base('PRICE', '料金一覧', """
-料金はこちらです。今日のお話だと、【○○プラン】が近いと思います。
-正式な金額は、伺った内容をもとにお見積りしますね。
-（全プランを説明しない。勧めるプランの行だけ指差す）
+料金はこちらです。制作代行は単発で5,000円から、顧問プランは月額49,800円からです。
+各種制作の目安は下の表のとおりです。今日のお話だと、【○○】が近いと思います。正式な金額は、伺った内容をもとにお見積りしますね。
+顧問プランの契約中は、制作代行が20%引きになります。
+（全部説明しない。相手に関係する行だけ指差す）
 """)
-rows = [('制作代行「カワリミ」', '広告物の制作・運用を代行（LP・HP、LINE、Meta広告、チラシなど）', '単発 5,000円〜'),
-        ('集客顧問「ミチスジ」顧問プラン', '月最大4時間のZoom相談、添削、施策の分析・仮説検証', '月額 49,800円〜'),
-        ('集客顧問「ミチスジ」相談プラン', '最大2時間のZoom相談で、添削と対応方針をご提案', '1回 14,800円〜'),
-        ('集客顧問「ミチスジ」提案プラン', '現状分析と、必要な施策をまとめた提案書の作成・プレゼン', '単発 49,800円〜')]
-tbl = s.shapes.add_table(len(rows) + 1, 3, Emu(MX), Emu(1700000), Emu(CW), Emu(3600000)).table
-for j, wd in enumerate((3300000, 5100000, 2268000)):
+plans = [('制作代行「カワリミ」', '単発', '5,000円〜', '広告物の制作・運用を代行'),
+         ('集客顧問「ミチスジ」顧問プラン', '月額', '49,800円〜', '月4時間までのZoom相談')]
+cw = 5180000
+for i, (name, unit, price, desc) in enumerate(plans):
+    x = MX + i * (cw + 308000)
+    box(s, x, 1550000, cw, 1150000, fill=CREAM)
+    box(s, x, 1550000, 76200, 1150000, fill=GOLD if i else INK)
+    text(s, x + 300000, 1680000, cw - 600000, 350000, name, 15, True)
+    text(s, x + 300000, 2100000, cw - 2900000, 350000, desc, 11, False, SUB)
+    text(s, x + cw - 2600000, 2020000, 600000, 400000, unit, 12, False, SUB)
+    text(s, x + cw - 2100000, 1900000, 1850000, 600000, price, 24, True, GOLD, PP_ALIGN.RIGHT)
+menu = [('Web制作', 'LP制作・HP制作（Wix／ペライチ／WordPress）', '100,000円〜'),
+        ('Web制作', 'LPライティング（構成・原稿・ワイヤー作成）', '80,000円〜'),
+        ('SNS・広告', '公式LINE構築＋運用（配信代行含む）', '初月50,000円〜／月額30,000円〜'),
+        ('SNS・広告', 'Meta広告運用（Facebook／Instagram）', '初期30,000円〜／月額 広告費の20%'),
+        ('紙媒体', 'チラシ制作（片面／両面）', '30,000円〜／50,000円〜'),
+        ('その他', 'スピーチ原稿／営業資料', '5,000円〜／50,000円〜')]
+tbl = s.shapes.add_table(len(menu) + 1, 3, Emu(MX), Emu(2900000), Emu(CW), Emu(3000000)).table
+for j, wd in enumerate((1700000, 5300000, 3668000)):
     tbl.columns[j].width = Emu(wd)
-for i, row_ in enumerate([('プラン', '内容', '価格（税込）')] + rows):
+for i, row_ in enumerate([('カテゴリー', '各種制作メニュー', '価格（税込）')] + menu):
+    tbl.rows[i].height = Emu(400000)
     for j, v in enumerate(row_):
         c = tbl.cell(i, j)
         c.fill.solid()
         c.fill.fore_color.rgb = INK if i == 0 else (CREAM if i % 2 == 0 else WHITE)
         c.vertical_anchor = MSO_ANCHOR.MIDDLE
-        c.margin_left = c.margin_right = Emu(180000)
+        c.margin_left = c.margin_right = Emu(150000)
+        c.margin_top = c.margin_bottom = Emu(30000)
         p = c.text_frame.paragraphs[0]
         p.alignment = PP_ALIGN.RIGHT if (j == 2 and i) else PP_ALIGN.LEFT
         r = p.add_run()
         r.text = v
-        font(r, 12 if i == 0 else (14 if j != 1 else 12), i == 0 or j != 1,
-             WHITE if i == 0 else (GOLD if j == 2 else INK))
-box(s, MX, 5550000, CW, 600000, fill=CREAM)
-text(s, MX, 5550000, CW, 600000, '「ミチスジ」顧問プランの契約中は、制作代行「カワリミ」の費用が 20% OFF になります。', 13, True, INK, PP_ALIGN.CENTER, MSO_ANCHOR.MIDDLE)
+        font(r, 11 if i == 0 else 12, i == 0 or j == 2, WHITE if i == 0 else (GOLD if j == 2 else INK))
+text(s, MX, 6080000, CW, 300000, '※ 価格は税込・目安です。内容やボリュームに応じて事前にお見積りします。「ミチスジ」顧問プラン契約中は、制作代行の費用が20% OFF。', 9, False, SUB)
 
 # 24 次の一歩 ---------------------------------------------------------------
 s = base('NEXT STEP', '次の一歩', """
@@ -697,30 +709,6 @@ notes(s, """
 section('付録', 'サービス詳細', '質問されたときだけ開く', """
 料金や内容を詳しく聞かれたときだけ開く。
 """)
-
-# 13 カワリミ ---------------------------------------------------------------
-s = base('KAWARIMI', '制作代行「カワリミ」― あなたの代わりに、作って運用します', """
-カワリミは、集客に必要な広告づくりを私が代わりにやるサービスです。
-企画・構成から制作・運用まで丸投げいただけます。お願いするのは、必要な情報と素材のご提供だけです。
-（相手に関係のあるメニューだけ指差す。全部読み上げない）
-""")
-menu = [('Webページ制作（LP・HP）', '100,000円〜', '構成・ライティングから実装まで'),
-        ('LPライティング', '80,000円〜', '構成・原稿・ワイヤー作成'),
-        ('公式LINE構築・運用', '初月50,000円〜\n月額30,000円〜', '配信代行を含む'),
-        ('Meta広告運用', '初期30,000円〜\n月額 広告費の20%', 'Facebook・Instagram'),
-        ('チラシ制作', '片面30,000円〜\n両面50,000円〜', ''),
-        ('スピーチ原稿・営業資料', '5,000円〜\n50,000円〜', '30秒スピーチ原稿は5,000円')]
-cw, ch = 3400000, 1950000
-for i, (h_, price, sub) in enumerate(menu):
-    x = MX + (i % 3) * (cw + 234000)
-    y = 1700000 + (i // 3) * (ch + 200000)
-    box(s, x, y, cw, ch, fill=WHITE, line=LINE)
-    box(s, x, y, cw, 50800, fill=INK)
-    text(s, x + 250000, y + 250000, cw - 500000, 400000, h_, 15, True)
-    text(s, x + 250000, y + 720000, cw - 500000, 700000, price.split('\n'), 15, True, GOLD, spacing=1.2)
-    if sub:
-        text(s, x + 250000, y + ch - 420000, cw - 500000, 300000, sub, 10, False, SUB)
-text(s, MX, 6050000, CW, 300000, '※ 価格は税込・目安です。内容やボリュームに応じて、事前にお見積りします。', 10, False, SUB)
 
 # 14 ミチスジ ---------------------------------------------------------------
 s = base('MICHISUJI', '集客顧問「ミチスジ」― 迷子にならない道筋を、一緒に', """
