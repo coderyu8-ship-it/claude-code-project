@@ -164,6 +164,60 @@ def quote(s, x, y, w, h, q, who):
     text(s, x + 300000, y + h - 500000, w - 600000, 300000, who, 11, True, SUB, PP_ALIGN.RIGHT)
 
 
+# ---- 元データ（旧資料）のデザインを土台にする -----------------------------------
+import copy as _copy
+from pptx.opc.constants import RELATIONSHIP_TYPE as _RT
+_ORIG = sys.argv[3]
+prs = Presentation(_ORIG)
+_tpl = prs.slides[3]                       # 背景の網目・上端の金ライン・フッター線を持つ旧スライド
+_tpl_shapes = list(_tpl.shapes)
+_BG = [_tpl_shapes[i]._element for i in (0, 5, 1)]   # 網目背景グループ、上端ライン、フッター線
+_REL = {rId: rel for rId, rel in _tpl.part.rels.items()}
+BLANK = _tpl.slide_layout
+_keep = []
+
+
+def _drop_original_slides():
+    lst = prs.slides._sldIdLst
+    for sid in list(lst)[:18]:
+        prs.part.drop_rel(sid.rId)
+        lst.remove(sid)
+
+
+def _paste_bg(s, plain=False):
+    tree = s.shapes._spTree
+    for el in (_BG[1:] if plain else _BG):
+        new_el = _copy.deepcopy(el)
+        for node in new_el.iter():
+            for k, v in list(node.attrib.items()):
+                if k.endswith('}embed') and v in _REL:
+                    node.set(k, s.part.relate_to(_REL[v]._target, _RT.IMAGE))
+        tree.insert(2, new_el) if el is _BG[0] else tree.append(new_el)
+
+
+def new(dark=False):
+    s = prs.slides.add_slide(BLANK)
+    page[0] += 1
+    return s
+
+
+def base(label, title, speech, plain=False):
+    s = new()
+    _paste_bg(s, plain)
+    text(s, MX, 571500, CW, 260000, label, 10.5, True, GOLD)
+    text(s, MX, 880025, CW, 600000, title, 27, True)
+    text(s, MX, 6534150, 4000000, 200000, '© U-Writing All Rights Reserved.', 8, False, SUB)
+    text(s, W - MX - 600000, 6470000, 600000, 260000, str(page[0]), 14, True, INK, PP_ALIGN.RIGHT)
+    notes(s, speech)
+    return s
+
+
+def section(no, title, sub, speech):
+    s = base(no or 'SECTION', title, speech)
+    text(s, MX, 1900000, CW, 500000, sub, 16, False, SUB)
+    return s
+
+_drop_original_slides()
 # ================================================================ slides
 # 1 表紙 ---------------------------------------------------------------
 s = new()
@@ -172,7 +226,7 @@ cov.crop((430, 0, cov.size[0], cov.size[1])).save(f'{A}/cover_crop.png')
 pic(s, f'{A}/cover_crop.png', W - 6300000, 0, h=H)
 text(s, MX, 1500000, 6000000, 300000, 'U-ライティング サービスのご案内', 13, True, SUB)
 box(s, MX, 1900000, 700000, 38100, fill=GOLD)
-text(s, MX, 2150000, 6200000, 1800000, ['マーケティング迷子を、', '減らす。'], 44, True, spacing=1.15)
+text(s, MX, 2150000, 6300000, 1800000, ['マーケティング迷子を、', '減らす。'], 38, True, spacing=1.15)
 text(s, MX, 3950000, 6000000, 400000, '薬機法を守りながら“売れる”広告づくりと集客支援', 15, False, SUB)
 text(s, MX, 5300000, 6000000, 600000, [('集客プランナー / ライター', 11, True, GOLD), ('上原 龍之介', 18, True, INK)])
 notes(s, """
@@ -258,13 +312,8 @@ text(s, x0, 4800000, 6300000, 1300000, [
     ('→ 現在：ライター兼集客プランナー', 11, False, SUB)], spacing=1.5)
 
 # 8 マーケティング迷子 -----------------------------------------------------
-s = new(dark=True)
-text(s, MX, 1700000, CW, 400000, '頑張っているのに、何にお金と時間を使えばいいか分からない。', 20, False, RGBColor(0xDD, 0xDD, 0xDD), PP_ALIGN.CENTER)
-text(s, MX, 2550000, CW, 500000, '私はこれを', 18, False, RGBColor(0xDD, 0xDD, 0xDD), PP_ALIGN.CENTER)
-text(s, MX, 3100000, CW, 1100000, '「マーケティング迷子」', 54, True, GOLD, PP_ALIGN.CENTER)
-text(s, MX, 4350000, CW, 500000, 'と呼んでいます。', 18, False, RGBColor(0xDD, 0xDD, 0xDD), PP_ALIGN.CENTER)
-notes(s, """
-（診断が終わったら、ここで自分の想いを話す。2分以内）
+s = base('MY PHILOSOPHY', '仕事の理念：マーケティング迷子を減らす', """
+（自己紹介のあと、ここで自分の想いを話す。2分以内）
 私がこの仕事を続けている理由を、少しだけお話しさせてください。
 いろんな事業者さんとお話しする中で、「何十万円もかけてホームページを作ったけど、問い合わせが来ない」「高い講座やコンサルを受けたけど、成果につながらなかった」という話を本当によく聞くんです。
 それでも皆さん諦めずに、自力で頑張ろうとする。でも自力だと時間がかかるし、専門家に頼むとまたお金がかかる。
@@ -274,6 +323,16 @@ notes(s, """
 
 【注意】「支援業者は高すぎる」という言い方は絶対にしない。同席者や紹介先にコンサル・制作会社がいる。
 """)
+voices_ = [('高いお金をかけたのに、\n成果が出ない', '数十万円かけてHP・LPを作った、講座やコンサルを受けた。それでも問い合わせが増えない。'),
+           ('自力で頑張るが、\n結果まで遠回りに', 'もう一度自分で集客に取り組むものの、手探りのため結果が出るまで時間がかかる。'),
+           ('専門家に頼みたいが、\n費用が重い', '早く結果を出すには専門家の力が必要。でも、また大きなお金がかかってしまう。')]
+cw = 3400000
+for i, (h_, b_) in enumerate(voices_):
+    card(s, MX + i * (cw + 234000), 1700000, cw, 2350000, h_, b_, num=f'よく聞く声 0{i+1}', head_size=15, body_size=12)
+box(s, MX, 4300000, CW, 1750000, fill=INK)
+text(s, MX, 4450000, CW, 400000, '頑張っているのに、何にお金と時間を使えばいいか分からない。私はこれを', 15, False, WHITE, PP_ALIGN.CENTER)
+text(s, MX, 4900000, CW, 700000, '「マーケティング迷子」', 34, True, GOLD, PP_ALIGN.CENTER)
+text(s, MX, 5550000, CW, 400000, 'と呼んでいます。一人でも減らしたい。それが私の仕事の理由です。', 15, False, WHITE, PP_ALIGN.CENTER)
 
 # 10 私の約束 --------------------------------------------------------------
 s = base('MY PROMISE', 'だから私は、こう決めています', """
@@ -613,15 +672,9 @@ for i, (lab, h_, price, b_) in enumerate(nexts):
         text(s, x + 250000, 3750000, cw - 500000, 500000, price, 22, True, GOLD)
     text(s, x + 250000, 4450000, cw - 500000, 1300000, b_, 13, False, SUB, spacing=1.5)
 
-# 25 セクション：ご紹介のお願い ------------------------------------------------
-section('', 'ご紹介のお願い', 'マーケティング迷子を、一緒に減らしてください', """
-（紹介を目指す場合、または契約の話のあとに）
-最後に一つ、お願いがあります。
-""")
-
-
 # 紹介：5つの理由をそのまま紹介のきっかけに ------------------------------------
 s = base('REFERRAL KEYWORDS', 'この5つで悩んでいる方がいたら、思い出してください', """
+（紹介を目指す場合、または契約の話のあとに）最後に一つ、お願いがあります。
 今日お話しした5つのよくある失敗、どれかで悩んでいる方が周りにいたら、私を思い出してください。
 「チラシやLPを作ったけど反応がない」「何から手をつければいいか分からない」と言っている方は、たいていこのどれかです。
 合言葉は「マーケティング迷子」です。
@@ -683,13 +736,14 @@ for k, (h_, b_) in enumerate(flow):
 text(s, MX, 5250000, CW, 700000, ['メリット：自社サービスの付加価値として提案できる／リスクなく新たな収益源になる／専門的な薬機法対応を任せられる'], 11, False, SUB)
 
 # 29 クロージング ------------------------------------------------------------
-s = new(dark=True)
-text(s, MX, 1500000, CW, 500000, '本日はありがとうございました', 30, True, WHITE, PP_ALIGN.CENTER)
-text(s, MX, 2400000, CW, 500000, '最後に教えてください', 14, False, RGBColor(0xCF, 0xCF, 0xCF), PP_ALIGN.CENTER)
-text(s, MX, 2850000, CW, 600000, '私から○○様にご紹介できるのは、どんな方ですか？', 22, True, GOLD, PP_ALIGN.CENTER)
-box(s, 3600000, 4300000, 4992000, 1650000, fill=WHITE)
-text(s, 3850000, 4500000, 3200000, 400000, [('U-ライティング 上原 龍之介', 13, True, INK), ('サービスサイト', 10, False, SUB), ('https://www.u-promotion.com/', 11, True, GOLD)], spacing=1.5)
-pic(s, f'{A}/qr.png', 7300000, 4450000, w=1150000)
+s = base('THANK YOU', '本日はありがとうございました', '')
+box(s, MX, 1750000, CW, 1900000, fill=CREAM)
+box(s, MX, 1750000, 76200, 1900000, fill=GOLD)
+text(s, MX, 2050000, CW, 400000, '最後に教えてください', 14, False, SUB, PP_ALIGN.CENTER)
+text(s, MX, 2550000, CW, 700000, '私から○○様にご紹介できるのは、どんな方ですか？', 24, True, INK, PP_ALIGN.CENTER)
+box(s, 3600000, 4100000, 4992000, 1650000, fill=WHITE, line=LINE)
+text(s, 3850000, 4300000, 3200000, 400000, [('U-ライティング 上原 龍之介', 13, True, INK), ('サービスサイト', 10, False, SUB), ('https://www.u-promotion.com/', 11, True, GOLD)], spacing=1.5)
+pic(s, f'{A}/qr.png', 7300000, 4350000, w=1150000)
 notes(s, """
 ▼紹介を目指す場合：その場で名前を出してもらう
 今日のお話で、思い浮かんだ方はいらっしゃいますか？
@@ -705,13 +759,8 @@ notes(s, """
 
 
 
-# 付録セクション -----------------------------------------------------------
-section('付録', 'サービス詳細', '質問されたときだけ開く', """
-料金や内容を詳しく聞かれたときだけ開く。
-""")
-
 # 14 ミチスジ ---------------------------------------------------------------
-s = base('MICHISUJI', '集客顧問「ミチスジ」― 迷子にならない道筋を、一緒に', """
+s = base('APPENDIX  MICHISUJI', '集客顧問「ミチスジ」― 迷子にならない道筋を、一緒に', """
 ミチスジは、ご自身で動きたい方の横で、道筋を示し続けるサービスです。
 いきなり顧問でなくても大丈夫です。まずは1回の相談から、必要なら提案書、続けるなら顧問、と段階的に使えます。
 顧問中は、制作代行が20%引きになります。
