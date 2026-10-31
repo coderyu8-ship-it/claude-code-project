@@ -653,7 +653,7 @@ cw = 3400000
 for i, (lab, h_, price, b_) in enumerate(nexts):
     x = MX + i * (cw + 234000)
     box(s, x, 2350000, cw, 3600000, fill=CREAM if i == 0 else WHITE, line=GOLD if i == 0 else LINE, lw=2 if i == 0 else 1)
-    tag(s, x + 250000, 2600000, lab, fill=GOLD if i == 0 else INK, w=len(lab) * 170000 + 300000)
+    tag(s, x + 250000, 2600000, lab, fill=TERRA if i == 0 else TEAL, w=len(lab) * 170000 + 300000)
     text(s, x + 250000, 3150000, cw - 500000, 500000, f'0{i+1}  {h_}', 20, True)
     if price:
         text(s, x + 250000, 3750000, cw - 500000, 500000, price, 22, True, TERRA)
