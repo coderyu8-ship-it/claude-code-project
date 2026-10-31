@@ -6,7 +6,7 @@ from pptx.dml.color import RGBColor
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 
-SRC, OUT, QR = sys.argv[1], sys.argv[2], sys.argv[3]
+SRC, OUT, QR, WORKS_A, WORKS_B = sys.argv[1:6]
 prs = Presentation(SRC)
 S = list(prs.slides)  # original order, 0-based
 
@@ -309,13 +309,89 @@ for para in sh(S[17], 17).text_frame.paragraphs:
     for r in para.runs:
         r.text = r.text.replace('20万円', '10万円')
 
+# ---- Webサイト掲載の実績・成果物例（制作メニューを複製して作る）
+def blank_from_menu(label_text, title_text):
+    d = duplicate(S[12])
+    for x in list(d.shapes):
+        if x.has_table or (x.has_text_frame and x.text_frame.text.startswith('※上記')):
+            delete(x)
+    T(d, 3, label_text)
+    T(d, 4, title_text)
+    return d
+
+
+def textbox(slide, l, t, w, h, lines, size=11, bold=False, color=RGBColor(0x33, 0x33, 0x33), align=PP_ALIGN.LEFT):
+    tb = slide.shapes.add_textbox(Emu(l), Emu(t), Emu(w), Emu(h))
+    tf = tb.text_frame
+    tf.word_wrap = True
+    for k, line in enumerate(lines):
+        p = tf.paragraphs[0] if k == 0 else tf.add_paragraph()
+        p.alignment = align
+        r = p.add_run()
+        r.text = line
+        r.font.size = Pt(size)
+        r.font.bold = bold
+        r.font.name = 'Noto Sans JP'
+        r.font.color.rgb = color
+    return tb
+
+
+def framed(slide, path, l, t, h):
+    from PIL import Image
+    iw, ih = Image.open(path).size
+    w = int(h * iw / ih)
+    pic = slide.shapes.add_picture(path, Emu(l), Emu(t), Emu(w), Emu(h))
+    pic.line.color.rgb = GOLD
+    pic.line.width = Pt(1)
+    return w
+
+
+works = blank_from_menu('WORKS (FROM WEBSITE)', '実績一覧（Webサイト掲載）')
+TOP, H = 1650000, 4550000
+w1 = framed(works, WORKS_A, 762000, TOP, int(H * 1930 / 2490))
+framed(works, WORKS_B, 762000 + w1 + 250000, TOP, H)
+textbox(works, 8000000, 1700000, 3430000, 2500000, [
+    'その他の実績', '',
+    '■ クラファン（ライティング担当）', '羽毛ふとん・健康雑貨・PCガジェット', '',
+    '■ LINE・広告', '化粧品LINEシナリオ 成約率17.12%', '講座集客 Meta広告で1人約14,000円', '',
+    '■ 記事・採用', '採用記事 公開1週間で新卒1人入社', 'PR記事の平均転載数 60→70サイト',
+], size=11)
+textbox(works, 8000000, 5300000, 3430000, 700000,
+        ['ご覧いただいている内容は', 'https://www.u-promotion.com/ に掲載しています。'], size=9, color=GOLD)
+
+portfolio = blank_from_menu('PORTFOLIO', '過去の成果物例')
+items = [('ECサイト制作', 'RING A BELL OKINAWA様', '構成案・ライティング'),
+         ('LP制作', 'erellaオンラインセールス代行様', '構成案・ライティング'),
+         ('HP制作', '株式会社t.style様', 'ライティング')]
+CW, CG = 3400000, 234000
+for k, (kind, client, scope) in enumerate(items):
+    l = 762000 + k * (CW + CG)
+    ph = portfolio.shapes.add_shape(MSO_SHAPE.RECTANGLE, Emu(l), Emu(1750000), Emu(CW), Emu(2550000))
+    ph.fill.solid()
+    ph.fill.fore_color.rgb = RGBColor(0xF4, 0xF1, 0xEA)
+    ph.line.color.rgb = GOLD
+    ph.line.dash_style = 4
+    tf = ph.text_frame
+    tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    p = tf.paragraphs[0]
+    p.alignment = PP_ALIGN.CENTER
+    r = p.add_run()
+    r.text = f'【{kind}】のスクリーンショットを貼る'
+    r.font.size = Pt(11)
+    r.font.color.rgb = RGBColor(0x99, 0x88, 0x66)
+    r.font.name = 'Noto Sans JP'
+    textbox(portfolio, l, 4420000, CW, 1300000,
+            [f'【{kind}】', client, f'対応範囲：{scope}'], size=12, bold=False)
+textbox(portfolio, 762000, 5750000, 10668000, 400000,
+        ['その他、非公開の実績もございます。ご希望があれば個別にお見せします。'], size=11, align=PP_ALIGN.CENTER)
+
 # ---- 並べ替え
-order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'voices', 10, 'next', 'kw', 16, 17, 11, 12, 13, 14, 15]
+order = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 'voices', 'works', 'portfolio', 10, 'next', 'kw', 16, 17, 11, 12, 13, 14, 15]
 ids = list(prs.slides._sldIdLst)
 by_part = {prs.slides.get(int(i.get('id'))).part: i for i in ids} if False else None
 lst = prs.slides._sldIdLst
 els = list(lst)
-orig_els, nxt_el, kw_el, v_el = els[:18], None, None, None
+orig_els, nxt_el, kw_el, v_el, w_el, pf_el = els[:18], None, None, None, None, None
 for el in els[18:]:
     slide = prs.slides.get(int(el.get('id')))
     if slide is nxt:
@@ -324,10 +400,14 @@ for el in els[18:]:
         kw_el = el
     elif slide is voices:
         v_el = el
+    elif slide is works:
+        w_el = el
+    elif slide is portfolio:
+        pf_el = el
 for el in els:
     lst.remove(el)
 for o in order:
-    lst.append({'next': nxt_el, 'kw': kw_el, 'voices': v_el}.get(o, None) if isinstance(o, str) else orig_els[o])
+    lst.append({'next': nxt_el, 'kw': kw_el, 'voices': v_el, 'works': w_el, 'portfolio': pf_el}.get(o, None) if isinstance(o, str) else orig_els[o])
 
 prs.save(OUT)
 print('saved', OUT)
