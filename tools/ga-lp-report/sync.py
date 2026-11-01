@@ -36,8 +36,12 @@ SCOPES = [
 GA_URL = "https://analyticsdata.googleapis.com/v1beta/properties/{}:runReport"
 SHEETS_URL = "https://sheets.googleapis.com/v4/spreadsheets/{}"
 
-HEADER_ROWS = 2  # 1行目: カテゴリ（結合セル）, 2行目: 商品名 + 末尾行にスラッグ
-CUMULATIVE_ROW = 3
+# 表の位置は A 列が「日付」の行（見出し行）を基準に決める。上に行を挿入されても追従する。
+#   見出し行  : カテゴリ（結合セル）
+#   +1 行目   : 商品名 + 末尾行にスラッグ
+#   +2 行目   : 累計
+#   +3 行目〜 : ◯月合計 / 日付行
+HEADER_LABEL = "日付"
 FIRST_DATA_COL = 2  # B 列
 MONTH_TOTAL_RE = re.compile(r"^\d{1,2}月合計$")
 
@@ -154,23 +158,30 @@ class Sheet:
             params={"valueRenderOption": "FORMATTED_VALUE"},
         ))
         self.rows = data.get("values", [])
+        self.header_row = next(
+            (i for i, row in enumerate(self.rows, start=1) if row and row[0].strip() == HEADER_LABEL), None)
+        if self.header_row is None:
+            sys.exit(f"A 列に「{HEADER_LABEL}」の見出し行が見つかりません")
+        self.product_row = self.header_row + 1
+        self.cumulative_row = self.header_row + 2
+        self.body_start_row = self.header_row + 3
 
     def cell(self, r, c):
         row = self.rows[r - 1] if r - 1 < len(self.rows) else []
         return row[c - 1] if c - 1 < len(row) else ""
 
     def columns(self, cfg):
-        """[(列番号, カテゴリ名, スラッグ)]。1行目の結合セルは左端にだけ値があるので前方補完する。"""
+        """[(列番号, カテゴリ名, スラッグ)]。見出し行の結合セルは左端にだけ値があるので前方補完する。"""
         cols, cat = [], ""
-        width = max(len(self.rows[0]), len(self.rows[1]))
+        width = max(len(self.rows[self.header_row - 1]), len(self.rows[self.product_row - 1]))
         for c in range(FIRST_DATA_COL, width + 1):
-            cat = self.cell(1, c).strip() or cat
-            product = self.cell(2, c).strip()
+            cat = self.cell(self.header_row, c).strip() or cat
+            product = self.cell(self.product_row, c).strip()
             if not product:
                 continue
             slug = product.splitlines()[-1].strip()
             if cat not in cfg["categories"]:
-                sys.exit(f"{col_letter(c)}1 のカテゴリ「{cat}」が config.json にありません")
+                sys.exit(f"{col_letter(c)}{self.header_row} のカテゴリ「{cat}」が config.json にありません")
             cols.append((c, cat, slug))
         return cols
 
@@ -240,10 +251,11 @@ def add_month_block(sheet, year, month, last_col):
 
 def ensure_cumulative(sheet, last_col):
     """累計行を、全ての「◯月合計」行の合計にする。"""
-    formulas = [f'=SUMIF($A$4:$A,"*月合計",{col_letter(c)}$4:{col_letter(c)})'
+    top, row = sheet.body_start_row, sheet.cumulative_row
+    formulas = [f'=SUMIF($A${top}:$A,"*月合計",{col_letter(c)}${top}:{col_letter(c)})'
                 for c in range(FIRST_DATA_COL, last_col + 1)]
     sheet.batch_values([{
-        "range": f"'{sheet.name}'!{col_letter(FIRST_DATA_COL)}{CUMULATIVE_ROW}:{col_letter(last_col)}{CUMULATIVE_ROW}",
+        "range": f"'{sheet.name}'!{col_letter(FIRST_DATA_COL)}{row}:{col_letter(last_col)}{row}",
         "values": [formulas],
     }])
 
