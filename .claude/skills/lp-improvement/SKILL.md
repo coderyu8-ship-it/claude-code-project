@@ -1,6 +1,6 @@
 ---
 name: lp-improvement
-description: 田丸屋LPの改善案を、数値管理シート・Clarity・LP本文・前回の改善案をもとに作り、Googleドキュメント「YYYYMMDD時点_LP改善案（Clarity・KPIシート分析）」として保存するスキル。「LP改善案」「LPの改善」「LP分析」「LPO」「前回のLP改善案の形式で」などと言われたら必ず使う。
+description: 田丸屋LPの改善案を、数値管理シート・Clarity・LP本文・前回の改善案をもとに作り、Googleドキュメント「【即時作成】YYYYMMDD時点_LP改善案（Clarity・KPIシート分析）」として保存するスキル。「LP改善案」「LPの改善」「LP分析」「LPO」「前回のLP改善案の形式で」などと言われたら必ず使う。
 ---
 
 # LP改善案（Clarity・KPIシート分析）
@@ -17,7 +17,7 @@ description: 田丸屋LPの改善案を、数値管理シート・Clarity・LP�
   - 「Meta広告の数値」：日別の数値。**メモ列（W列）に施策の実施日と計測の注意が書いてある。必ず読む**
   - 「LPリンクの遷移数」：商品リンクごとのクリック数（月合計の行と日別の行）
   - 「LPヒートマップ」：スクロール到達率（Clarity、スマホのみ）
-- 保存先フォルダ：Drive `1D_MOhjZs4p20vSbrZuKPzcofP1ka3TZN`（前回の改善案と同じフォルダ）
+- 保存先フォルダ：Drive `1xZuY2bPAoLL0dKbdfIqEz1yUl7Ijx0b7`（https://drive.google.com/drive/folders/1xZuY2bPAoLL0dKbdfIqEz1yUl7Ijx0b7）
 - 前提方針（ユーザーが変えない限り固定）：**ボタンは増やさない／LPは1本で考える（別LPは作らない）**
 
 ## 1. データを集める（全部読む）
@@ -41,7 +41,7 @@ description: 田丸屋LPの改善案を、数値管理シート・Clarity・LP�
 
 ## 3. ドキュメントの構成
 
-タイトル：`YYYYMMDD時点_LP改善案（Clarity・KPIシート分析）`
+タイトル：`【即時作成】YYYYMMDD時点_LP改善案（Clarity・KPIシート分析）`（先頭の「【即時作成】」は必ず付ける）
 
 ```
 # LP改善案（田丸屋）
